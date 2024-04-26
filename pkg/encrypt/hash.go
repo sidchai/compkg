@@ -31,7 +31,12 @@ func (s *Sha256) ToHex(message string) string {
 	return hex.EncodeToString(s.encrypt(message))
 }
 
-// ToBase64 将加密后的二进制转base64
-func (s *Sha256) ToBase64(message string) string {
+// ToStdBase64 将加密后的二进制转标准base64
+func (s *Sha256) ToStdBase64(message string) string {
 	return base64.StdEncoding.EncodeToString(s.encrypt(message))
+}
+
+// ToUrlBase64 将加密后的二进制转Url base64
+func (s *Sha256) ToUrlBase64(message string) string {
+	return base64.URLEncoding.EncodeToString(s.encrypt(message))
 }
