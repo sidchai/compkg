@@ -1,4 +1,4 @@
-package util
+package redis_lock
 
 import (
 	crand "crypto/rand"
