@@ -385,10 +385,10 @@ func (r *Redis) Incr(key string) (value int64, err error) {
 	return
 }
 
-func (r *Redis) HGet(key, field string) interface{} {
+func (r *Redis) HGet(key, field string) string {
 	if len(key) == 0 {
 		fmt.Println("empty key")
-		return nil
+		return ""
 	}
 	key = fmt.Sprintf("%s:%s", r.prefix, key)
 	ts := time.Now()
