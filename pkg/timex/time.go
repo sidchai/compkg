@@ -223,3 +223,36 @@ func ParseTimeStr(timeStr string) (time.Duration, error) {
 
 	return time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second + time.Duration(millis)*time.Millisecond, nil
 }
+
+// TimeStrFormat
+//
+//	@Description: 时间字符串转为时间
+//	@param timeStr 时间字符串
+//	@param sType 转换类型
+//	@return time.Time
+func TimeStrFormat(timeStr string, sType int) (time.Time, error) {
+	format := ""
+	switch sType {
+	case 1:
+		format = "2006-01-02 15:04:05.000"
+	case 2:
+		format = "2006-01-02 15:04:05"
+	case 3:
+		format = "2006-01-02 15:04"
+	case 4:
+		format = "2006-01-02 15"
+	case 5:
+		format = "2006-01-02"
+	case 6:
+		format = "2006-01"
+	case 7:
+		format = "2006"
+	case 8:
+		format = "20060102150405"
+	}
+	location, err := time.ParseInLocation(format, timeStr, time.Local)
+	if err != nil {
+		return time.Now(), err
+	}
+	return location, nil
+}
