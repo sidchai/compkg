@@ -32,8 +32,8 @@ func TestGet(t *testing.T) {
 	}
 	opts := &redis.Options{
 		Addr:     "127.0.0.1:6379",
-		Password: "123456",
-		DB:       14,
+		Password: "crs-pjns4g0f:Saisiyun0427",
+		DB:       0,
 	}
 	NewRedis(WithClientName(DefaultRedisClient), WithOptions(opts), WithTrace(new(trace.Cache)), WithPrefix("sidchai"))
 	redisClient := GetRedisClient(DefaultRedisClient)

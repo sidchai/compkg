@@ -3,9 +3,12 @@ module github.com/sidchai/compkg
 go 1.22.2
 
 require (
+	github.com/bwmarrin/snowflake v0.3.0
 	github.com/bytedance/sonic v1.11.6
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/google/uuid v1.6.0
 	go.uber.org/zap v1.27.0
+	golang.org/x/crypto v0.24.0
 )
 
 require (

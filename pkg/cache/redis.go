@@ -454,6 +454,36 @@ func (r *Redis) HSet(key string, values ...interface{}) (value int64, err error)
 	return
 }
 
+func (r *Redis) HDel(key string, fields ...string) (value int64, err error) {
+	if len(key) == 0 {
+		return 0, errors.New("empty key")
+	}
+	key = fmt.Sprintf("%s:%s", r.prefix, key)
+	ts := time.Now()
+	defer func() {
+		if r.trace == nil || r.trace.Logger == nil {
+			return
+		}
+		costMillisecond := time.Since(ts).Milliseconds()
+
+		if !r.trace.AlwaysTrace && costMillisecond < r.trace.SlowLoggerMillisecond {
+			return
+		}
+		r.trace.TraceTime = timex.GetTimeByTimestamp(time.Now().Unix())
+		r.trace.CMD = "HDel"
+		r.trace.Key = key
+		r.trace.Value = strconv.FormatInt(value, 10)
+		r.trace.CostMillisecond = costMillisecond
+		r.trace.Logger.Warn("redis-trace", zap.Any("", r.trace))
+	}()
+	if r.client != nil {
+		value, err = r.client.HDel(r.ctx, key, fields...).Result()
+		return
+	}
+	value, err = r.clusterClient.HDel(r.ctx, key, fields...).Result()
+	return
+}
+
 func (r *Redis) RPush(key string, values ...interface{}) (value int64, err error) {
 	if len(key) == 0 {
 		return 0, errors.New("empty key")

@@ -111,7 +111,7 @@ func GetTimestampByTime(timeFormat string) int64 {
 	if err != nil {
 		return 0
 	}
-	return location.UnixMilli()
+	return location.Unix()
 }
 
 // TimeFormat
@@ -255,4 +255,43 @@ func TimeStrFormat(timeStr string, sType int) (time.Time, error) {
 		return time.Now(), err
 	}
 	return location, nil
+}
+
+// CalculateDaysDifference
+//
+//	@Description: 计算时间相差的天数
+//	@param t1 天数1
+//	@param t2 天数2
+//	@return int 天数
+func CalculateDaysDifference(t1, t2 time.Time) int {
+	// 确保时间是零时区，以便只比较日期部分
+	t1 = t1.Truncate(24 * time.Hour)
+	t2 = t2.Truncate(24 * time.Hour)
+	if t1.Equal(t2) {
+		return 1
+	}
+	// 计算时间差，并将其转换为天数
+	diff := t2.Sub(t1)
+	days := int(diff.Hours() / 24)
+	return days
+}
+
+// GetDatesBetween
+//
+//	@Description: 返回两个日期之间的所有日期（包括起始日期和结束日期）
+//	@param startDate 起始日期
+//	@param endDate 结束日期
+//	@return []time.Time 日期集合
+func GetDatesBetween(startTime, endTime time.Time) []time.Time {
+	var dates []time.Time
+	// 确保时间是零时区，以便只比较日期部分
+	startDate := startTime.Truncate(24 * time.Hour)
+	endDate := endTime.Truncate(24 * time.Hour)
+
+	for d := startDate; !d.After(endDate); d = d.Add(24 * time.Hour) {
+		if (d.After(startTime) || d.Equal(startTime)) && (d.Before(endTime) || d.Equal(endTime)) {
+			dates = append(dates, d)
+		}
+	}
+	return dates
 }
