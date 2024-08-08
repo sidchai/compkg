@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"math"
 	"math/rand"
+	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -111,6 +112,29 @@ func IsInArray[T comparable](target T, arr []T) bool {
 		if item == target {
 			return true
 		}
+	}
+	return false
+}
+
+// RemoveQuotes
+//
+//	@Description: 删除字符串中双引号
+func RemoveQuotes(input string) string {
+	return strings.ReplaceAll(input, "\"", "")
+}
+
+// CheckFolder
+//
+//	@Description: 检查文件目录是否存在
+//	@param path 目录路径
+//	@return bool 是否存在
+func CheckFolder(path string) bool {
+	_, _err := os.Stat(path)
+	if _err == nil {
+		return true
+	}
+	if os.IsNotExist(_err) {
+		return false
 	}
 	return false
 }
