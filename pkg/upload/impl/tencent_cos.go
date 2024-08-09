@@ -127,6 +127,7 @@ func (t *TencentCos) PutACL(path string) error {
 			XCosACL: "private",
 		},
 	}
+	path = strings.ReplaceAll(path, t.cosUrl+"/", "")
 	_, err := t.cosClient.Object.PutACL(context.Background(), path, opt)
 	if err != nil {
 		return err
@@ -142,7 +143,7 @@ func (t *TencentCos) SetTagging(path string, tags map[string]string) error {
 			Value: v,
 		})
 	}
-
+	path = strings.ReplaceAll(path, t.cosUrl+"/", "")
 	// 设置标签
 	opt := &cos.ObjectPutTaggingOptions{
 		TagSet: tagSet,
