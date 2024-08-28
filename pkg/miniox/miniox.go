@@ -28,8 +28,8 @@ type MinioX struct {
 
 func initMinioX(endpoint, accessKeyId, secretAccessKey string) {
 	client, err := minio.New(endpoint, &minio.Options{
-		Creds: credentials.NewStaticV4(accessKeyId, secretAccessKey, ""),
-		//Secure: true,
+		Creds:  credentials.NewStaticV4(accessKeyId, secretAccessKey, ""),
+		Secure: true,
 	})
 	if err != nil {
 		fmt.Println("miniox initMinioX err:", err)
@@ -88,7 +88,7 @@ func (m *MinioX) UploadFile(objectName, filePath string) (string, error) {
 	m.ObjectSize = uploadInfo.Size
 	// 文件md5校验值
 	m.ETag = uploadInfo.ETag
-	return fmt.Sprintf("%s://%s/%s%s", m.client.EndpointURL().Scheme, m.client.EndpointURL().Host, m.BucketName, m.Module+objectName), nil
+	return fmt.Sprintf("%s://%s/%s/%s", m.client.EndpointURL().Scheme, m.client.EndpointURL().Host, m.BucketName, m.Module+objectName), nil
 }
 
 // Upload
@@ -116,7 +116,7 @@ func (m *MinioX) Upload(objectName string, reader io.Reader, objectSize int64) (
 //	@param localFileName
 //	@return error
 func (m *MinioX) DownloadFile(fileUrl, localFileName string) error {
-	objectName := strings.ReplaceAll(fileUrl, fmt.Sprintf("%s://%s/%s", m.client.EndpointURL().Scheme, m.client.EndpointURL().Host, m.BucketName), "")
+	objectName := strings.ReplaceAll(fileUrl, fmt.Sprintf("%s://%s/%s/", m.client.EndpointURL().Scheme, m.client.EndpointURL().Host, m.BucketName), "")
 	logger.Info(objectName)
 	return m.client.FGetObject(m.ctx, m.BucketName, objectName, localFileName, minio.GetObjectOptions{})
 }
