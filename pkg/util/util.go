@@ -4,9 +4,10 @@ import (
 	"crypto/md5"
 	"fmt"
 	"github.com/google/uuid"
+	"io"
 	"math"
 	"math/rand"
-	"net"
+	"net/http"
 	"os"
 	"reflect"
 	"strings"
@@ -141,12 +142,17 @@ func CheckFolder(path string) bool {
 }
 
 func GetOurBoundIP() (ip string, err error) {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
+	// 使用 ipify 的公共 API 来获取公网 IP
+	response, err := http.Get("https://api.ipify.org?format=text")
 	if err != nil {
-		return
+		return "", err
 	}
-	defer conn.Close()
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	ip = strings.Split(localAddr.IP.String(), ":")[0]
-	return
+	defer response.Body.Close()
+
+	ipByte, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(ipByte), nil
 }
