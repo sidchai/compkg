@@ -71,7 +71,7 @@ func (m *Minio) UploadFileIo(fileName string, content io.Reader) (string, error)
 		m.Catalogue = "audio"
 	}
 	if m.IsTime {
-		m.Catalogue = fmt.Sprintf("/%s/%s", m.Catalogue, time.Now().Format("2006/01/02"))
+		m.Catalogue = fmt.Sprintf("/%s/%s/", m.Catalogue, time.Now().Format("2006/01/02"))
 	}
 	m.client.Module = m.Catalogue
 	readerLen, _ := oss.GetReaderLen(content)
