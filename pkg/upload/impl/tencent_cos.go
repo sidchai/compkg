@@ -16,12 +16,13 @@ import (
 )
 
 type TencentCos struct {
-	ETag      string
-	FileSize  int64
-	Catalogue string
-	IsTime    bool
-	cosClient *cos.Client
-	cosUrl    string
+	ETag            string
+	FileSize        int64
+	Catalogue       string
+	IsTime          bool
+	cosClient       *cos.Client
+	cosUrl          string
+	IsCustomStorage bool
 }
 
 func init() {
@@ -45,6 +46,9 @@ func (t *TencentCos) UploadFileLocal(fileName, fileLocalPath string) (string, er
 	cosPath := fmt.Sprintf("/%s/%s", t.Catalogue, fileName)
 	if t.IsTime {
 		cosPath = fmt.Sprintf("/%s/%s/%s", t.Catalogue, time.Now().Format("2006/01/02"), fileName)
+	}
+	if t.IsCustomStorage {
+		cosPath = strings.ReplaceAll(fileName, t.cosUrl+"/", "")
 	}
 	headerOptions := &cos.ObjectPutHeaderOptions{
 		XCosStorageClass: "STANDARD_IA",
@@ -71,7 +75,14 @@ func (t *TencentCos) UploadFileLocal(fileName, fileLocalPath string) (string, er
 }
 
 func (t *TencentCos) UploadFileIo(fileName string, content io.Reader) (string, error) {
-	rsp, err := t.cosClient.Object.Put(context.Background(), fileName, content, nil)
+	cosPath := fmt.Sprintf("/%s/%s", t.Catalogue, fileName)
+	if t.IsTime {
+		cosPath = fmt.Sprintf("/%s/%s/%s", t.Catalogue, time.Now().Format("2006/01/02"), fileName)
+	}
+	if t.IsCustomStorage {
+		cosPath = strings.ReplaceAll(fileName, t.cosUrl+"/", "")
+	}
+	rsp, err := t.cosClient.Object.Put(context.Background(), cosPath, content, nil)
 	if err != nil {
 		logger.Errorf("TencentCos UploadFileIo Put err:%+v", err.Error())
 		return "", err
@@ -80,7 +91,7 @@ func (t *TencentCos) UploadFileIo(fileName string, content io.Reader) (string, e
 	etag := rsp.Header.Get("ETag")
 	t.ETag = util.RemoveQuotes(etag)
 	t.FileSize = rsp.Request.ContentLength
-	return fmt.Sprintf("%s%s", t.cosUrl, fileName), nil
+	return fmt.Sprintf("%s%s", t.cosUrl, cosPath), nil
 }
 
 func (t *TencentCos) GetETag() string {
@@ -97,6 +108,10 @@ func (t *TencentCos) SetCatalogue(catalogue string) {
 
 func (t *TencentCos) SetIsTime(isTime bool) {
 	t.IsTime = isTime
+}
+
+func (t *TencentCos) SetCustomStorage(isCustomStorage bool) {
+	t.IsCustomStorage = isCustomStorage
 }
 
 func (t *TencentCos) Download(fileUrl, fileName, dataFolder string) error {

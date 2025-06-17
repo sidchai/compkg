@@ -16,13 +16,14 @@ import (
 )
 
 type AliyunOss struct {
-	ETag       string
-	FileSize   int64
-	Catalogue  string
-	IsTime     bool
-	ossBucket  *oss.Bucket
-	bucketName string
-	endpoint   string
+	ETag            string
+	FileSize        int64
+	Catalogue       string
+	IsTime          bool
+	ossBucket       *oss.Bucket
+	bucketName      string
+	endpoint        string
+	IsCustomStorage bool
 }
 
 func init() {
@@ -52,9 +53,12 @@ func (a *AliyunOss) UploadFileLocal(fileName, fileLocalPath string) (string, err
 	if a.Catalogue == "" {
 		a.Catalogue = "audio"
 	}
-	ossPath := fmt.Sprintf("/%s/%s", a.Catalogue, fileName)
+	ossPath := fmt.Sprintf("%s/%s", a.Catalogue, fileName)
 	if a.IsTime {
-		ossPath = fmt.Sprintf("/%s/%s/%s", a.Catalogue, time.Now().Format("2006/01/02"), fileName)
+		ossPath = fmt.Sprintf("%s/%s/%s", a.Catalogue, time.Now().Format("2006/01/02"), fileName)
+	}
+	if a.IsCustomStorage {
+		ossPath = strings.ReplaceAll(fileName, fmt.Sprintf("https://%s.%s/", a.bucketName, a.endpoint), "")
 	}
 	if err := a.ossBucket.PutObjectFromFile(ossPath, fileLocalPath); err != nil {
 		logger.Errorf("AliyunOss UploadFileLocal PutObjectFromFile err:%+v", err.Error())
@@ -75,15 +79,18 @@ func (a *AliyunOss) UploadFileIo(fileName string, content io.Reader) (string, er
 	if a.Catalogue == "" {
 		a.Catalogue = "audio"
 	}
-	ossPath := fmt.Sprintf("/%s/%s", a.Catalogue, fileName)
+	ossPath := fmt.Sprintf("%s/%s", a.Catalogue, fileName)
 	if a.IsTime {
-		ossPath = fmt.Sprintf("/%s/%s/%s", a.Catalogue, time.Now().Format("2006/01/02"), fileName)
+		ossPath = fmt.Sprintf("%s/%s/%s", a.Catalogue, time.Now().Format("2006/01/02"), fileName)
+	}
+	if a.IsCustomStorage {
+		ossPath = strings.ReplaceAll(fileName, fmt.Sprintf("https://%s.%s/", a.bucketName, a.endpoint), "")
 	}
 	if err := a.ossBucket.PutObject(ossPath, content); err != nil {
 		logger.Errorf("AliyunOss UploadFileIo PutObject err:%+v", err.Error())
 		return "", nil
 	}
-	return fmt.Sprintf("https://%s.%s/%s", a.bucketName, a.endpoint, fileName), nil
+	return fmt.Sprintf("https://%s.%s/%s", a.bucketName, a.endpoint, ossPath), nil
 }
 
 func (a *AliyunOss) GetETag() string {
@@ -100,6 +107,10 @@ func (a *AliyunOss) SetCatalogue(catalogue string) {
 
 func (a *AliyunOss) SetIsTime(isTime bool) {
 	a.IsTime = isTime
+}
+
+func (a *AliyunOss) SetCustomStorage(isCustomStorage bool) {
+	a.IsCustomStorage = isCustomStorage
 }
 
 func (a *AliyunOss) Download(fileUrl, fileName, dataFolder string) error {
@@ -155,15 +166,16 @@ func NewBucket(endpoint, accessKeyId, accessKeySecret, bucketName string) (*oss.
 		hlog.Errorf("AliyunOss NewBucket err:%+v", err.Error())
 		return nil, err
 	}
+	logger.Infof("bucketName:%s", bucketName)
 	// 判断桶是否存在，不存在则创建
-	exist, err := client.IsBucketExist(bucketName)
-	if !exist {
-		// 创建存储空间，并设置存储类型为低频访问oss.StorageIA、读写权限ACL为公共读
-		if err = client.CreateBucket(bucketName, oss.StorageClass(oss.StorageIA), oss.ACL(oss.ACLPublicRead)); err != nil {
-			logger.Errorf("AliyunOss CreateBucket err:%+v", err.Error())
-			return nil, err
-		}
-	}
+	//exist, err := client.IsBucketExist(bucketName)
+	//if !exist {
+	//	// 创建存储空间，并设置存储类型为低频访问oss.StorageIA、读写权限ACL为公共读
+	//	if err = client.CreateBucket(bucketName, oss.StorageClass(oss.StorageIA), oss.ACL(oss.ACLPublicRead)); err != nil {
+	//		logger.Errorf("AliyunOss CreateBucket err:%+v", err.Error())
+	//		return nil, err
+	//	}
+	//}
 	bucket, err := client.Bucket(bucketName)
 	if err != nil {
 		logger.Errorf("AliyunOss get Bucket err:%+v", err.Error())

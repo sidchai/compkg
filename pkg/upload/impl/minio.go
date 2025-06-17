@@ -15,11 +15,12 @@ import (
 )
 
 type Minio struct {
-	ETag      string
-	FileSize  int64
-	Catalogue string
-	IsTime    bool
-	client    *miniox.MinioX
+	ETag            string
+	FileSize        int64
+	Catalogue       string
+	IsTime          bool
+	client          *miniox.MinioX
+	IsCustomStorage bool
 }
 
 func init() {
@@ -38,6 +39,7 @@ func (m *Minio) NewClient(ctx context.Context, opts ...upload.OssOption) {
 		miniox.WithAccessKeyId(po.AccessKeyId),
 		miniox.WithSecretAccessKey(po.SecretAccessKey),
 		miniox.WithEndpoint(po.Endpoint),
+		miniox.WithSecure(po.Secure),
 	)
 	m.client = minioX
 }
@@ -99,6 +101,10 @@ func (m *Minio) SetCatalogue(catalogue string) {
 
 func (m *Minio) SetIsTime(isTime bool) {
 	m.IsTime = isTime
+}
+
+func (m *Minio) SetCustomStorage(isCustomStorage bool) {
+	m.IsCustomStorage = isCustomStorage
 }
 
 func (m *Minio) Download(fileUrl, fileName, dataFolder string) error {

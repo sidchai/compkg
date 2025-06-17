@@ -11,8 +11,10 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"io"
 )
 
 const (
@@ -238,4 +240,67 @@ func (x *ecbDecrypter) CryptBlocks(dst, src []byte) {
 		src = src[x.blockSize:]
 		dst = dst[x.blockSize:]
 	}
+}
+
+type AesGcm struct {
+	Key []byte
+}
+
+// Encrypt AES GCM模式加密
+func (a *AesGcm) Encrypt(origData string) (string, error) {
+	if origData == "" {
+		return "", errors.New("加密数据不能为空")
+	}
+	block, err := aes.NewCipher(a.Key)
+	if err != nil {
+		return "", err
+	}
+
+	// 创建一个GCM模式的加密器
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	// 创建一个随机nonce
+	nonce := make([]byte, aesGCM.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	// 加密数据
+	out := aesGCM.Seal(nil, nonce, []byte(origData), nil)
+	return base64.StdEncoding.EncodeToString(append(nonce, out...)), nil
+}
+
+// Decrypt AES GCM模式解密
+func (a *AesGcm) Decrypt(crypted []byte) (string, error) {
+	if len(a.Key) != 16 {
+		return "", errors.New("key must be 16 bytes for AES-128")
+	}
+
+	block, err := aes.NewCipher(a.Key)
+	if err != nil {
+		return "", err
+	}
+
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonceSize := aesGCM.NonceSize()
+	if len(crypted) < nonceSize {
+		return "", errors.New("ciphertext too short")
+	}
+
+	nonce := crypted[:nonceSize]
+	ciphertext := crypted[nonceSize:]
+
+	plaintext, err := aesGCM.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plaintext), nil
 }

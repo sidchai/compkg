@@ -184,6 +184,9 @@ func TimestampFormat(t int64, sType int) string {
 		return curTime.Format("2006")
 	case 8:
 		return curTime.Format("20060102150405")
+	case 9:
+		nano := curTime.UnixNano()
+		return curTime.Format("20060102150405") + fmt.Sprintf("%03d", nano%1e9/1e6)
 	}
 	return ""
 }

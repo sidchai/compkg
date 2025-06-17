@@ -145,6 +145,10 @@ func GetRedisClient(name string) *Redis {
 	return nil
 }
 
+func (r *Redis) GetRedisClientOrigin() *redis.Client {
+	return r.client
+}
+
 func GetRedisClusterClient(name string) *Redis {
 	if client, ok := redisClients.Load(name); ok {
 		return client.(*Redis)
@@ -454,6 +458,36 @@ func (r *Redis) HSet(key string, values ...interface{}) (value int64, err error)
 	return
 }
 
+func (r *Redis) HKeys(key string) (value []string, err error) {
+	if len(key) == 0 {
+		return nil, errors.New("empty key")
+	}
+	key = fmt.Sprintf("%s:%s", r.prefix, key)
+	ts := time.Now()
+	defer func() {
+		if r.trace == nil || r.trace.Logger == nil {
+			return
+		}
+		costMillisecond := time.Since(ts).Milliseconds()
+
+		if !r.trace.AlwaysTrace && costMillisecond < r.trace.SlowLoggerMillisecond {
+			return
+		}
+		r.trace.TraceTime = timex.GetTimeByTimestamp(time.Now().Unix())
+		r.trace.CMD = "HKeys"
+		r.trace.Key = key
+		r.trace.Value = value
+		r.trace.CostMillisecond = costMillisecond
+		r.trace.Logger.Warn("redis-trace", zap.Any("", r.trace))
+	}()
+	if r.client != nil {
+		value, err = r.client.HKeys(r.ctx, key).Result()
+		return
+	}
+	value, err = r.clusterClient.HKeys(r.ctx, key).Result()
+	return
+}
+
 func (r *Redis) HDel(key string, fields ...string) (value int64, err error) {
 	if len(key) == 0 {
 		return 0, errors.New("empty key")
@@ -511,6 +545,104 @@ func (r *Redis) RPush(key string, values ...interface{}) (value int64, err error
 		return
 	}
 	value, err = r.clusterClient.RPush(r.ctx, key, values).Result()
+	return
+}
+
+func (r *Redis) HIncrBy(key string, field string, incr int64) (value int64, err error) {
+	if len(key) == 0 {
+		return 0, errors.New("empty key")
+	}
+	key = fmt.Sprintf("%s:%s", r.prefix, key)
+	ts := time.Now()
+	defer func() {
+		if r.trace == nil || r.trace.Logger == nil {
+			return
+		}
+		costMillisecond := time.Since(ts).Milliseconds()
+
+		if !r.trace.AlwaysTrace && costMillisecond < r.trace.SlowLoggerMillisecond {
+			return
+		}
+		r.trace.TraceTime = timex.GetTimeByTimestamp(time.Now().Unix())
+		r.trace.CMD = "RPush"
+		r.trace.Key = key
+		r.trace.Value = strconv.FormatInt(value, 10)
+		r.trace.CostMillisecond = costMillisecond
+		r.trace.Logger.Warn("redis-trace", zap.Any("", r.trace))
+	}()
+	if r.client != nil {
+		value, err = r.client.HIncrBy(r.ctx, key, field, incr).Result()
+		return
+	}
+	value, err = r.clusterClient.HIncrBy(r.ctx, key, field, incr).Result()
+	return
+}
+
+func (r *Redis) Publish(channel string, values interface{}) (value int64, err error) {
+	ts := time.Now()
+	defer func() {
+		if r.trace == nil || r.trace.Logger == nil {
+			return
+		}
+		costMillisecond := time.Since(ts).Milliseconds()
+
+		if !r.trace.AlwaysTrace && costMillisecond < r.trace.SlowLoggerMillisecond {
+			return
+		}
+		r.trace.TraceTime = timex.GetTimeByTimestamp(time.Now().Unix())
+		r.trace.CMD = "Publish"
+		r.trace.Key = channel
+		r.trace.Value = strconv.FormatInt(value, 10)
+		r.trace.CostMillisecond = costMillisecond
+		r.trace.Logger.Warn("redis-trace", zap.Any("", r.trace))
+	}()
+	if r.client != nil {
+		value, err = r.client.Publish(r.ctx, channel, values).Result()
+		return
+	}
+	value, err = r.clusterClient.Publish(r.ctx, channel, values).Result()
+	return
+}
+
+func (r *Redis) Subscribe(channel string, callback func(message string)) {
+	ts := time.Now()
+	defer func() {
+		if r.trace == nil || r.trace.Logger == nil {
+			return
+		}
+		costMillisecond := time.Since(ts).Milliseconds()
+
+		if !r.trace.AlwaysTrace && costMillisecond < r.trace.SlowLoggerMillisecond {
+			return
+		}
+		r.trace.TraceTime = timex.GetTimeByTimestamp(time.Now().Unix())
+		r.trace.CMD = "Subscribe"
+		r.trace.Key = channel
+		r.trace.CostMillisecond = costMillisecond
+		r.trace.Logger.Warn("redis-trace", zap.Any("", r.trace))
+	}()
+	if r.client != nil {
+		pubSub := r.client.Subscribe(r.ctx, channel)
+		for {
+			msg, err := pubSub.ReceiveMessage(r.ctx)
+			if err != nil {
+				return
+			}
+			callback(msg.Payload)
+			break
+		}
+	}
+	pubSub := r.clusterClient.Subscribe(r.ctx, channel)
+	func() {
+		for {
+			msg, err := pubSub.ReceiveMessage(r.ctx)
+			if err != nil {
+				return
+			}
+			callback(msg.Payload)
+			break
+		}
+	}()
 	return
 }
 

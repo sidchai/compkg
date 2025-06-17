@@ -26,10 +26,10 @@ type MinioX struct {
 	client     *minio.Client // 操作客户端
 }
 
-func initMinioX(endpoint, accessKeyId, secretAccessKey string) {
+func initMinioX(endpoint, accessKeyId, secretAccessKey string, secure bool) {
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKeyId, secretAccessKey, ""),
-		Secure: true,
+		Secure: secure,
 	})
 	if err != nil {
 		fmt.Println("miniox initMinioX err:", err)
@@ -53,7 +53,7 @@ func NewMinioX(ctx context.Context, opts ...MinioOption) *MinioX {
 		client:     minioClient,
 	}
 	if minioClient == nil {
-		initMinioX(po.Endpoint, po.AccessKeyId, po.SecretAccessKey)
+		initMinioX(po.Endpoint, po.AccessKeyId, po.SecretAccessKey, po.Secure)
 		minioX.client = minioClient
 	}
 	//policy := fmt.Sprintf(`{"Version": "2012-10-17","Statement": [{"Action": ["s3:GetObject"],"Effect": "Allow","Principal": {"AWS": ["*"]},"Resource": ["arn:aws:s3:::%s/*"],"Sid": ""}]}`, po.BucketName)
@@ -61,7 +61,7 @@ func NewMinioX(ctx context.Context, opts ...MinioOption) *MinioX {
 	//if err != nil {
 	//	log.Println("miniox SetBucketPolicy err:", err)
 	//}
-	minioX.Bucket()
+	//minioX.Bucket()
 	return minioX
 }
 

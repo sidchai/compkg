@@ -141,6 +141,11 @@ func CheckFolder(path string) bool {
 	return false
 }
 
+func FileExist(path string) bool {
+	_, err := os.Lstat(path)
+	return !os.IsNotExist(err)
+}
+
 func GetOurBoundIP() (ip string, err error) {
 	// 使用 ipify 的公共 API 来获取公网 IP
 	response, err := http.Get("https://api.ipify.org?format=text")

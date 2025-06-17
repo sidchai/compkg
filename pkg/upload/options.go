@@ -8,6 +8,7 @@ type OssOptions struct {
 	SecretAccessKey string // secretKey
 	Expires         int64  // 过期时间，单位：s
 	ObjectKey       string // 对象key
+	Secure          bool   // 是否使用https
 }
 
 var DefaultOssOptions = OssOptions{}
@@ -69,5 +70,11 @@ func WithExpires(expires int64) OssOption {
 func WithObjectKey(objectKey string) OssOption {
 	return newFuncProducerOption(func(options *OssOptions) {
 		options.ObjectKey = objectKey
+	})
+}
+
+func WithSecure(secure bool) OssOption {
+	return newFuncProducerOption(func(options *OssOptions) {
+		options.Secure = secure
 	})
 }

@@ -1,9 +1,10 @@
 package httptool
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -43,11 +44,12 @@ func defaultRequestOptions() *requestOption {
 
 func HttpRequest(method, url string, options ...Option) (result string, err error) {
 	start := time.Now()
+	responseHeader := make(map[string][]string)
 	defaultOpts := defaultRequestOptions()
 	// 记录请求日志
 	defer func() {
 		dur := int64(time.Since(start) / time.Millisecond)
-		fmt.Printf(fmt.Sprintf("http:%s, url:%s, in:%s, out:%s, err:%v, dur/ms:%v\n", method, url, defaultOpts.data, result, err, dur))
+		fmt.Printf(fmt.Sprintf("http:%s\t, url:%s\t, request_headers:%v\t, in:%s\t, out:%s\t, response_headers:%v\t, err:%v, dur/ms:%v\n", method, url, defaultOpts.headers, defaultOpts.data, result, responseHeader, err, dur))
 	}()
 	for _, apply := range options {
 		apply(defaultOpts)
@@ -64,14 +66,24 @@ func HttpRequest(method, url string, options ...Option) (result string, err erro
 			req.Header.Add(key, value)
 		}
 	}
-	client := &http.Client{Timeout: defaultOpts.timeout}
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true, // 禁用证书验证
+	}
+	client := &http.Client{
+		Timeout: defaultOpts.timeout,
+		Transport: &http.Transport{
+			TLSClientConfig:   tlsConfig,
+			DisableKeepAlives: true,
+		},
+	}
 	response, err := client.Do(req)
 	if err != nil {
 		return
 	}
 	defer response.Body.Close()
+	responseHeader = response.Header
 	// 解析响应
-	readAll, err := ioutil.ReadAll(response.Body)
+	readAll, err := io.ReadAll(response.Body)
 	if err != nil {
 		return
 	}
@@ -81,9 +93,10 @@ func HttpRequest(method, url string, options ...Option) (result string, err erro
 
 func HTTPRequest(method, url string, options ...Option) (response *http.Response, err error) {
 	defaultOpts := defaultRequestOptions()
+	responseHeader := make(map[string][]string)
 	// 记录请求日志
 	defer func() {
-		fmt.Sprintf(fmt.Sprintf("http:%s, url:%s, in:%s, err:%v\n", method, url, defaultOpts.data, err))
+		fmt.Printf("http:%s, url:%s, in:%s, response_headers:%v\t, err:%v\n", method, url, defaultOpts.data, responseHeader, err)
 	}()
 	for _, apply := range options {
 		apply(defaultOpts)
@@ -105,6 +118,7 @@ func HTTPRequest(method, url string, options ...Option) (response *http.Response
 	if err != nil {
 		return
 	}
+	responseHeader = response.Header
 	return
 }
 

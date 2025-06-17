@@ -13,13 +13,14 @@ import (
 )
 
 type VolcEngineTos struct {
-	ETag       string
-	FileSize   int64
-	Catalogue  string
-	IsTime     bool
-	bucketName string
-	objectKey  string
-	tosClient  *tos.ClientV2
+	ETag            string
+	FileSize        int64
+	Catalogue       string
+	IsTime          bool
+	bucketName      string
+	objectKey       string
+	tosClient       *tos.ClientV2
+	IsCustomStorage bool
 }
 
 func init() {
@@ -100,6 +101,10 @@ func (v *VolcEngineTos) SetCatalogue(catalogue string) {
 
 func (v *VolcEngineTos) SetIsTime(isTime bool) {
 	v.IsTime = isTime
+}
+
+func (v *VolcEngineTos) SetCustomStorage(isCustomStorage bool) {
+	v.IsCustomStorage = isCustomStorage
 }
 
 func (v *VolcEngineTos) Download(fileUrl, fileName, dataFolder string) error {

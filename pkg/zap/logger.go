@@ -288,6 +288,9 @@ func (l *Logger) Sync() {
 }
 
 func (l *Logger) sendToES(level string, ctx context.Context, format string, v ...interface{}) {
+	if l.config.esClient == nil {
+		return
+	}
 	message := getMessage(format, v)
 
 	// 构建日志条目，包含 traceID 和调用信息

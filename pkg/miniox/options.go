@@ -7,6 +7,7 @@ type minioOptions struct {
 	SecretAccessKey string // secretKey
 	Module          string // 上传目录
 	Expires         int64  // 过期时间，单位：s
+	Secure          bool   // 是否使用https
 }
 
 var defaultS3Options = minioOptions{}
@@ -62,5 +63,11 @@ func WithModule(module string) MinioOption {
 func WithExpires(expires int64) MinioOption {
 	return newFuncProducerOption(func(options *minioOptions) {
 		options.Expires = expires
+	})
+}
+
+func WithSecure(secure bool) MinioOption {
+	return newFuncProducerOption(func(options *minioOptions) {
+		options.Secure = secure
 	})
 }

@@ -23,6 +23,7 @@ type Oss interface {
 	SetCatalogue(catalogue string)                                   // 设置存储目录
 	SetIsTime(isTime bool)                                           // 是否添加时间
 	SetTagging(path string, tags map[string]string) error            // 设置标签
+	SetCustomStorage(isCustomStorage bool)                           // 设置是否自定义存储
 }
 
 func init() {

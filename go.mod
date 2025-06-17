@@ -4,6 +4,7 @@ go 1.22.2
 
 require (
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
+	github.com/bwmarrin/snowflake v0.3.0
 	github.com/bytedance/sonic v1.11.6
 	github.com/cloudwego/hertz v0.9.2
 	github.com/go-redis/redis/v8 v8.11.5
