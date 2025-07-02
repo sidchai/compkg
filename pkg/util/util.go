@@ -17,12 +17,14 @@ import (
 var (
 	// DefaultMaxVoltage 默认最高电压(挂牌)
 	DefaultMaxVoltage int64 = 4150
-	// DefaultMaxVoltageX 默认最高电压(胸牌)
+	// DefaultMaxVoltageX 默认最高电压(胸牌: 8-30前)
 	DefaultMaxVoltageX int64 = 4050
+	// DefaultMaxVoltageNX 默认最高电压(胸牌: 8-30后)
+	DefaultMaxVoltageNX int64 = 4150
 	// DefaultMinVoltage 默认最低电压
 	DefaultMinVoltage int64 = 3450
-	//// DefaultMinVoltageX 默认最低电压(胸牌)
-	//DefaultMinVoltageX int64 = 3450
+	// DefaultMinVoltageX 默认最低电压(胸牌)
+	DefaultMinVoltageX int64 = 3350
 )
 
 // Md5
@@ -85,18 +87,30 @@ func StructToMap(obj interface{}) map[string]interface{} {
 	return data
 }
 
-func DeviceVoltageCalculate(batteryVoltage int, deviceType string) int64 {
+type VoltageCalculate struct {
+	BatteryVoltage int
+	DeviceType     string
+	DensityType    int
+	AccountId      int64
+}
+
+func DeviceVoltageCalculate(in *VoltageCalculate) int64 {
 	maxVoltage := DefaultMaxVoltage
-	if strings.HasSuffix(deviceType, "X") {
+	minVoltage := DefaultMinVoltage
+	if strings.HasSuffix(in.DeviceType, "X") {
 		maxVoltage = DefaultMaxVoltageX
+		minVoltage = DefaultMinVoltageX
+	} else if strings.HasSuffix(in.DeviceType, "T") {
+		maxVoltage = DefaultMaxVoltageNX
+		minVoltage = DefaultMinVoltageX
 	}
 	var remainPower int64
-	if int64(batteryVoltage) > maxVoltage {
+	if int64(in.BatteryVoltage) > maxVoltage {
 		remainPower = 100
-	} else if int64(batteryVoltage) <= DefaultMinVoltage {
+	} else if int64(in.BatteryVoltage) <= minVoltage {
 		remainPower = 1
 	} else {
-		remainPower = 100 - int64(math.Ceil(float64(maxVoltage-int64(batteryVoltage))/float64(maxVoltage-DefaultMinVoltage)*10)*10)
+		remainPower = 100 - int64(math.Ceil(float64(maxVoltage-int64(in.BatteryVoltage))/float64(maxVoltage-minVoltage)*10)*10)
 		if remainPower == 0 {
 			remainPower = 1
 		}
