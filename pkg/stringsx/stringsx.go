@@ -52,6 +52,14 @@ func StringIntoInt64(str string) int64 {
 	return i
 }
 
+func StringToFloat64(str string) float64 {
+	parseFloat, err := strconv.ParseFloat(str, 64)
+	if err != nil {
+		return 0
+	}
+	return parseFloat
+}
+
 func Int64IntoString(data int64) string {
 	formatInt := strconv.FormatInt(data, 10)
 	return formatInt
