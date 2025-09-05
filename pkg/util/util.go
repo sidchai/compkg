@@ -175,3 +175,13 @@ func GetOurBoundIP() (ip string, err error) {
 
 	return string(ipByte), nil
 }
+
+// CountDigits 判断数据有多少位
+func CountDigits(n int64) int {
+	count := 0
+	for n != 0 {
+		n /= 10
+		count++
+	}
+	return count
+}
