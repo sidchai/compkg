@@ -28,7 +28,7 @@ type TencentCos struct {
 
 func (t *TencentCos) GetPresignedURL(path string) (string, error) {
 	key := strings.ReplaceAll(path, t.cosUrl+"/", "")
-	presignedURL, err := t.cosClient.Object.GetPresignedURL3(context.Background(), http.MethodPut, key, time.Duration(t.expires)*time.Second, nil, true)
+	presignedURL, err := t.cosClient.Object.GetPresignedURL3(context.Background(), http.MethodGet, key, time.Duration(t.expires)*time.Second, nil, true)
 	if err != nil {
 		return "", err
 	}
