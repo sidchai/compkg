@@ -24,6 +24,7 @@ type Oss interface {
 	SetIsTime(isTime bool)                                           // 是否添加时间
 	SetTagging(path string, tags map[string]string) error            // 设置标签
 	SetCustomStorage(isCustomStorage bool)                           // 设置是否自定义存储
+	GetPresignedURL(path string) (string, error)                     // 获取预签名URL
 }
 
 func init() {

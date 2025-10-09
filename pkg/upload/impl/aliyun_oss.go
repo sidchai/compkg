@@ -26,6 +26,10 @@ type AliyunOss struct {
 	IsCustomStorage bool
 }
 
+func (a *AliyunOss) GetPresignedURL(path string) (string, error) {
+	return "", nil
+}
+
 func init() {
 	upload.RegisterOss("aliyun-oss", &AliyunOss{})
 }

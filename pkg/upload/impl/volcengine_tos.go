@@ -23,6 +23,10 @@ type VolcEngineTos struct {
 	IsCustomStorage bool
 }
 
+func (v *VolcEngineTos) GetPresignedURL(path string) (string, error) {
+	return "", nil
+}
+
 func init() {
 	upload.RegisterOss("volcengine-tos", &VolcEngineTos{})
 }

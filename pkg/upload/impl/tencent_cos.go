@@ -23,6 +23,16 @@ type TencentCos struct {
 	cosClient       *cos.Client
 	cosUrl          string
 	IsCustomStorage bool
+	expires         int64
+}
+
+func (t *TencentCos) GetPresignedURL(path string) (string, error) {
+	key := strings.ReplaceAll(path, t.cosUrl+"/", "")
+	presignedURL, err := t.cosClient.Object.GetPresignedURL3(context.Background(), http.MethodPut, key, time.Duration(t.expires)*time.Second, nil, true)
+	if err != nil {
+		return "", err
+	}
+	return presignedURL.String(), nil
 }
 
 func init() {
@@ -36,6 +46,7 @@ func (t *TencentCos) NewClient(ctx context.Context, opts ...upload.OssOption) {
 		opt.Apply(po)
 	}
 	t.cosUrl = po.Endpoint
+	t.expires = po.Expires
 	t.cosClient = NewClient(po.Endpoint, po.AccessKeyId, po.SecretAccessKey)
 }
 

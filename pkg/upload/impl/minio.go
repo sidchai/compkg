@@ -23,6 +23,10 @@ type Minio struct {
 	IsCustomStorage bool
 }
 
+func (m *Minio) GetPresignedURL(path string) (string, error) {
+	return m.client.GetPresignedURL(path)
+}
+
 func init() {
 	upload.RegisterOss("minio", &Minio{})
 	upload.RegisterOss("s3", &Minio{})

@@ -140,12 +140,17 @@ func (m *MinioX) GetObject(fileUrl string) *minio.Object {
 //	@Description: 获取文件临时访问路径
 //	@return err
 //	@return objectUrl
-func (m *MinioX) GetObjectUrl(objectName string) (err error, objectUrl string) {
+func (m *MinioX) GetObjectUrl(objectName string) (objectUrl string, err error) {
 	u, err := m.client.PresignedGetObject(m.ctx, m.BucketName, m.Module+objectName, time.Duration(m.Expires)*time.Second, nil)
 	if err != nil {
 		logger.Errorf("miniox GetObjectUrl err:%v", err)
-		return err, ""
+		return "", err
 	}
 	objectUrl = fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, u.Path)
-	return nil, objectUrl
+	return objectUrl, nil
+}
+
+func (m *MinioX) GetPresignedURL(fileUrl string) (objectUrl string, err error) {
+	objectName := strings.ReplaceAll(fileUrl, fmt.Sprintf("%s://%s/%s/", m.client.EndpointURL().Scheme, m.client.EndpointURL().Host, m.BucketName), "")
+	return m.GetObjectUrl(objectName)
 }
