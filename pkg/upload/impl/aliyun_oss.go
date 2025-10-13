@@ -24,14 +24,16 @@ type AliyunOss struct {
 	bucketName      string
 	endpoint        string
 	IsCustomStorage bool
-}
-
-func (a *AliyunOss) GetPresignedURL(path string) (string, error) {
-	return "", nil
+	expires         int64
 }
 
 func init() {
 	upload.RegisterOss("aliyun-oss", &AliyunOss{})
+}
+
+func (a *AliyunOss) GetPresignedURL(path string) (string, error) {
+	key := strings.ReplaceAll(path, fmt.Sprintf("https://%s.%s/", a.bucketName, a.endpoint), "")
+	return a.ossBucket.SignURL(key, oss.HTTPGet, a.expires)
 }
 
 func (a *AliyunOss) NewClient(ctx context.Context, opts ...upload.OssOption) {
@@ -48,6 +50,7 @@ func (a *AliyunOss) NewClient(ctx context.Context, opts ...upload.OssOption) {
 	a.ossBucket = bucket
 	a.bucketName = po.BucketName
 	a.endpoint = po.Endpoint
+	a.expires = po.Expires
 }
 
 func (a *AliyunOss) UploadFileLocal(fileName, fileLocalPath string) (string, error) {
@@ -172,14 +175,6 @@ func NewBucket(endpoint, accessKeyId, accessKeySecret, bucketName string) (*oss.
 	}
 	logger.Infof("bucketName:%s", bucketName)
 	// 判断桶是否存在，不存在则创建
-	//exist, err := client.IsBucketExist(bucketName)
-	//if !exist {
-	//	// 创建存储空间，并设置存储类型为低频访问oss.StorageIA、读写权限ACL为公共读
-	//	if err = client.CreateBucket(bucketName, oss.StorageClass(oss.StorageIA), oss.ACL(oss.ACLPublicRead)); err != nil {
-	//		logger.Errorf("AliyunOss CreateBucket err:%+v", err.Error())
-	//		return nil, err
-	//	}
-	//}
 	bucket, err := client.Bucket(bucketName)
 	if err != nil {
 		logger.Errorf("AliyunOss get Bucket err:%+v", err.Error())
