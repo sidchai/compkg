@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"reflect"
 	"strings"
@@ -184,4 +185,15 @@ func CountDigits(n int64) int {
 		count++
 	}
 	return count
+}
+
+func ReplaceHost(rawUrl, newHost string) string {
+	parsedURL, err := url.Parse(rawUrl)
+	if err != nil {
+		panic(err)
+	}
+
+	parsedURL.Host = newHost
+
+	return parsedURL.String()
 }
