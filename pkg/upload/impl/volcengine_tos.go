@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/sidchai/compkg/pkg/logger"
 	"github.com/sidchai/compkg/pkg/upload"
 	"github.com/volcengine/ve-tos-golang-sdk/v2/tos"
-	"io"
-	"os"
 )
 
 type VolcEngineTos struct {
@@ -28,7 +29,7 @@ func (v *VolcEngineTos) GetPresignedURL(path string) (string, error) {
 }
 
 func init() {
-	upload.RegisterOss("volcengine-tos", &VolcEngineTos{})
+	upload.RegisterOss("volcengine-tos", func() upload.Oss { return &VolcEngineTos{} })
 }
 
 func (v *VolcEngineTos) NewClient(ctx context.Context, opts ...upload.OssOption) {

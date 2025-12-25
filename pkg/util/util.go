@@ -188,6 +188,9 @@ func CountDigits(n int64) int {
 }
 
 func ReplaceHost(rawUrl, newHost string) string {
+	if rawUrl == "" {
+		return ""
+	}
 	parsedURL, err := url.Parse(rawUrl)
 	if err != nil {
 		panic(err)

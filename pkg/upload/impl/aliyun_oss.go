@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/sidchai/compkg/pkg/logger"
 	"github.com/sidchai/compkg/pkg/upload"
 	"github.com/sidchai/compkg/pkg/util"
-	"io"
-	"os"
-	"strings"
-	"time"
 )
 
 type AliyunOss struct {
@@ -28,7 +29,7 @@ type AliyunOss struct {
 }
 
 func init() {
-	upload.RegisterOss("aliyun-oss", &AliyunOss{})
+	upload.RegisterOss("aliyun-oss", func() upload.Oss { return &AliyunOss{} })
 }
 
 func (a *AliyunOss) GetPresignedURL(path string) (string, error) {

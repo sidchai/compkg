@@ -3,15 +3,16 @@ package impl
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"time"
+
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/sidchai/compkg/pkg/logger"
 	"github.com/sidchai/compkg/pkg/miniox"
 	"github.com/sidchai/compkg/pkg/upload"
 	"github.com/sidchai/compkg/pkg/util"
-	"io"
-	"os"
-	"time"
 )
 
 type Minio struct {
@@ -28,8 +29,8 @@ func (m *Minio) GetPresignedURL(path string) (string, error) {
 }
 
 func init() {
-	upload.RegisterOss("minio", &Minio{})
-	upload.RegisterOss("s3", &Minio{})
+	upload.RegisterOss("minio", func() upload.Oss { return &Minio{} })
+	upload.RegisterOss("s3", func() upload.Oss { return &Minio{} })
 }
 
 func (m *Minio) NewClient(ctx context.Context, opts ...upload.OssOption) {

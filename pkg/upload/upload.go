@@ -5,8 +5,11 @@ import (
 	"io"
 )
 
+// OssFactory 创建Oss实例的工厂函数
+type OssFactory func() Oss
+
 var (
-	platforms map[string]Oss //平台类型
+	platforms map[string]OssFactory //平台类型工厂
 )
 
 // Oss
@@ -28,17 +31,19 @@ type Oss interface {
 }
 
 func init() {
-	platforms = make(map[string]Oss)
+	platforms = make(map[string]OssFactory)
 }
 
-func RegisterOss(platformType string, platform Oss) {
-	platforms[platformType] = platform
+// RegisterOss 注册Oss工厂函数
+func RegisterOss(platformType string, factory OssFactory) {
+	platforms[platformType] = factory
 }
 
+// GetPlatform 获取新的Oss实例（每次调用返回新实例，避免并发问题）
 func GetPlatform(platformType string) Oss {
-	platform, ok := platforms[platformType]
+	factory, ok := platforms[platformType]
 	if ok {
-		return platform
+		return factory()
 	}
 	return nil
 }

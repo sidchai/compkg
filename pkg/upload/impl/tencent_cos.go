@@ -3,16 +3,17 @@ package impl
 import (
 	"context"
 	"fmt"
-	"github.com/sidchai/compkg/pkg/logger"
-	"github.com/sidchai/compkg/pkg/upload"
-	"github.com/sidchai/compkg/pkg/util"
-	"github.com/tencentyun/cos-go-sdk-v5"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/sidchai/compkg/pkg/logger"
+	"github.com/sidchai/compkg/pkg/upload"
+	"github.com/sidchai/compkg/pkg/util"
+	"github.com/tencentyun/cos-go-sdk-v5"
 )
 
 type TencentCos struct {
@@ -28,7 +29,7 @@ type TencentCos struct {
 
 func (t *TencentCos) GetPresignedURL(path string) (string, error) {
 	key := strings.ReplaceAll(path, t.cosUrl+"/", "")
-	presignedURL, err := t.cosClient.Object.GetPresignedURL3(context.Background(), http.MethodGet, key, time.Duration(t.expires)*time.Second, nil, true)
+	presignedURL, err := t.cosClient.Object.GetPresignedURL3(context.Background(), http.MethodGet, key, time.Duration(t.expires)*time.Second, nil, false)
 	if err != nil {
 		return "", err
 	}
@@ -36,7 +37,7 @@ func (t *TencentCos) GetPresignedURL(path string) (string, error) {
 }
 
 func init() {
-	upload.RegisterOss("tencent-cos", &TencentCos{})
+	upload.RegisterOss("tencent-cos", func() upload.Oss { return &TencentCos{} })
 }
 
 func (t *TencentCos) NewClient(ctx context.Context, opts ...upload.OssOption) {

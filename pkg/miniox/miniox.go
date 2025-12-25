@@ -2,14 +2,15 @@ package miniox
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"strings"
+	"time"
+
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/sidchai/compkg/pkg/logger"
-	"io"
-	"os"
-	"strings"
-	"time"
 )
 
 var (
@@ -26,17 +27,17 @@ type MinioX struct {
 	client     *minio.Client // 操作客户端
 }
 
-func initMinioX(endpoint, accessKeyId, secretAccessKey string, secure bool) {
+func initMinioX(endpoint, accessKeyId, secretAccessKey string, secure bool) *minio.Client {
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKeyId, secretAccessKey, ""),
 		Secure: secure,
 	})
 	if err != nil {
 		fmt.Println("miniox initMinioX err:", err)
-		os.Exit(-1)
-		return
+		return nil
 	}
-	minioClient = client
+	//minioClient = client
+	return client
 }
 
 func NewMinioX(ctx context.Context, opts ...MinioOption) *MinioX {
@@ -52,10 +53,11 @@ func NewMinioX(ctx context.Context, opts ...MinioOption) *MinioX {
 		Expires:    po.Expires,
 		client:     minioClient,
 	}
-	if minioClient == nil {
-		initMinioX(po.Endpoint, po.AccessKeyId, po.SecretAccessKey, po.Secure)
-		minioX.client = minioClient
-	}
+	//if minioClient == nil {
+	//	initMinioX(po.Endpoint, po.AccessKeyId, po.SecretAccessKey, po.Secure)
+	//	minioX.client = minioClient
+	//}
+	minioX.client = initMinioX(po.Endpoint, po.AccessKeyId, po.SecretAccessKey, po.Secure)
 	//policy := fmt.Sprintf(`{"Version": "2012-10-17","Statement": [{"Action": ["s3:GetObject"],"Effect": "Allow","Principal": {"AWS": ["*"]},"Resource": ["arn:aws:s3:::%s/*"],"Sid": ""}]}`, po.BucketName)
 	//err := minioClient.SetBucketPolicy(ctx, po.BucketName, policy)
 	//if err != nil {
@@ -78,12 +80,16 @@ func (m *MinioX) Bucket() {
 //	@param filePath 待上传文件路径
 //	@return error
 func (m *MinioX) UploadFile(objectName, filePath string) (string, error) {
+	if m.client == nil {
+		return "", errors.New("miniox client is nil")
+	}
 	options := minio.PutObjectOptions{}
 	uploadInfo, err := m.client.FPutObject(m.ctx, m.BucketName, m.Module+objectName, filePath, options)
 	if err != nil {
 		logger.Errorf("miniox uploadFile err:%v", err)
 		return "", err
 	}
+	logger.Infof("miniox uploadFile success, key:%s etag:%s, size:%d", uploadInfo.Key, uploadInfo.ETag, uploadInfo.Size)
 	// 文件大小
 	m.ObjectSize = uploadInfo.Size
 	// 文件md5校验值
@@ -98,6 +104,9 @@ func (m *MinioX) UploadFile(objectName, filePath string) (string, error) {
 //	@param objectSize 文件大小
 //	@return error
 func (m *MinioX) Upload(objectName string, reader io.Reader, objectSize int64) (string, error) {
+	if m.client == nil {
+		return "", errors.New("miniox client is nil")
+	}
 	uploadInfo, err := m.client.PutObject(m.ctx, m.BucketName, m.Module+objectName, reader, objectSize, minio.PutObjectOptions{})
 	if err != nil {
 		logger.Errorf("miniox upload err:%v", err)
