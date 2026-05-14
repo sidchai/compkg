@@ -135,6 +135,11 @@ func (m *Minio) PutACL(path string) error {
 	return nil
 }
 
+// CopySelf MinIO 暂不支持深度归档存储类型变更，留空实现保持接口一致
+func (m *Minio) CopySelf(path string, storageClass string) error {
+	return nil
+}
+
 func (m *Minio) SetTagging(path string, tags map[string]string) error {
 
 	return nil

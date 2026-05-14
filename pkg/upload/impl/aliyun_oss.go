@@ -148,6 +148,11 @@ func (a *AliyunOss) PutACL(path string) error {
 	return nil
 }
 
+// CopySelf 阿里云 OSS 暂未实现深度归档复制（保留接口兼容）
+func (a *AliyunOss) CopySelf(path string, storageClass string) error {
+	return nil
+}
+
 func (a *AliyunOss) SetTagging(path string, tags map[string]string) error {
 	tagSet := make([]oss.Tag, 0)
 	for k, v := range tags {

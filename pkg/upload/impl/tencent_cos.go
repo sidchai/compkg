@@ -182,6 +182,27 @@ func (t *TencentCos) SetTagging(path string, tags map[string]string) error {
 	return nil
 }
 
+// CopySelf 对象复制到自身：通过指定新的存储类型，将对象转换为该存储类型（如 DEEP_ARCHIVE）。
+// 腾讯云 COS 的对象复制要求 source 为不带 scheme 的 host+key 形式。
+func (t *TencentCos) CopySelf(path string, storageClass string) error {
+	key := strings.ReplaceAll(path, t.cosUrl+"/", "")
+	// 移除 cosUrl 的 scheme 部分得到 host+bucket（cos sdk Copy 要求源不带 scheme）
+	source := strings.TrimPrefix(t.cosUrl, "https://")
+	source = strings.TrimPrefix(source, "http://")
+	sourceURL := fmt.Sprintf("%s/%s", source, key)
+	opt := &cos.ObjectCopyOptions{
+		ObjectCopyHeaderOptions: &cos.ObjectCopyHeaderOptions{
+			XCosStorageClass:      storageClass,
+			XCosMetadataDirective: "Replaced",
+		},
+	}
+	_, _, err := t.cosClient.Object.Copy(context.Background(), key, sourceURL, opt)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func NewClient(cosUrl, secretId, secretKey string) *cos.Client {
 	urlStr, _ := url.Parse(cosUrl)
 	baseURL := &cos.BaseURL{BucketURL: urlStr}

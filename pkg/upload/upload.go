@@ -28,6 +28,7 @@ type Oss interface {
 	SetTagging(path string, tags map[string]string) error            // 设置标签
 	SetCustomStorage(isCustomStorage bool)                           // 设置是否自定义存储
 	GetPresignedURL(path string) (string, error)                     // 获取预签名URL
+	CopySelf(path string, storageClass string) error                 // 对象复制到自身（用于变更存储类型，如转为DEEP_ARCHIVE）
 }
 
 func init() {

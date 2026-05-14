@@ -120,6 +120,11 @@ func (v *VolcEngineTos) PutACL(path string) error {
 	return nil
 }
 
+// CopySelf 火山引擎 TOS 暂未实现深度归档复制（保留接口兼容）
+func (v *VolcEngineTos) CopySelf(path string, storageClass string) error {
+	return nil
+}
+
 func (v *VolcEngineTos) SetTagging(path string, tags map[string]string) error {
 	return nil
 }
