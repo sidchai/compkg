@@ -384,6 +384,16 @@ func (l *Loader) GetDuration(key string) time.Duration {
 }
 func (l *Loader) IsSet(key string) bool { return l.vp.Load().IsSet(key) }
 
+// AllSettings 返回当前完整配置树的深拷贝（含 ENC 解密 + env 展开后的最终值）。
+//
+// 用途：兼容旧 yaml→struct 模式（gopkg.in/yaml.v2 直接 Unmarshal 到 *Config）
+// 的项目接入：先从 Loader 拿全量 settings，再 yaml.Marshal 后 Unmarshal 到 struct。
+//
+// 返回的 map 是深拷贝，调用方修改不会影响 Loader 内部状态。
+func (l *Loader) AllSettings() map[string]any {
+	return deepClone(l.vp.Load().AllSettings())
+}
+
 // MustHas 缺 key 直接 panic（保持与旧 config 包语义一致）。
 func (l *Loader) MustHas(key string) {
 	if l.GetString(key) == "" {
