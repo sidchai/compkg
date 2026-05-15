@@ -66,7 +66,7 @@ type FileSinkOptions struct {
 	// 为空时不启用文件 sink。
 	Path string
 
-	// MaxSizeMB 单文件最大尺寸（MB）。默认 200。
+	// MaxSizeMB 单文件最大尺寸（MB）。默认 50。
 	MaxSizeMB int
 
 	// MaxBackups 保留的旧文件数。默认 30。
@@ -84,7 +84,7 @@ type FileSinkOptions struct {
 
 // 默认值常量。
 const (
-	defaultMaxSizeMB  = 200
+	defaultMaxSizeMB  = 50
 	defaultMaxBackups = 30
 	defaultMaxAgeDays = 30
 )
