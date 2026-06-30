@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/go-redis/redis/v8"
-	"github.com/sidchai/compkg/pkg/timex"
-	"github.com/sidchai/compkg/pkg/trace"
-	"go.uber.org/zap"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/sidchai/compkg/pkg/timex"
+	trace "github.com/sidchai/compkg/pkg/tracelegacy"
+	"go.uber.org/zap"
 )
 
 var (

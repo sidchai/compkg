@@ -15,7 +15,6 @@
 package zap
 
 import (
-	"github.com/olivere/elastic/v7"
 	"os"
 
 	"go.uber.org/zap"
@@ -45,7 +44,6 @@ type config struct {
 	coreConfigs   []CoreConfig
 	zapOpts       []zap.Option
 	extraKeyAsStr bool
-	esClient      *elastic.Client
 	esIndex       string
 	application   string
 	hostIp        string
@@ -131,12 +129,6 @@ func WithExtraKeys(keys []ExtraKey) Option {
 func WithExtraKeyAsStr() Option {
 	return option(func(cfg *config) {
 		cfg.extraKeyAsStr = true
-	})
-}
-
-func WithEsClient(esClient *elastic.Client) Option {
-	return option(func(cfg *config) {
-		cfg.esClient = esClient
 	})
 }
 

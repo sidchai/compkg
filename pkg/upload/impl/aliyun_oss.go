@@ -153,6 +153,20 @@ func (a *AliyunOss) CopySelf(path string, storageClass string) error {
 	return nil
 }
 
+// Delete 删除阿里云 OSS 对象
+// path 为完整外链 URL，需先剥离 https://{bucket}.{endpoint}/ 前缀得到 objectKey
+func (a *AliyunOss) Delete(path string) error {
+	if a.ossBucket == nil {
+		return errors.New("ossBucket is nil")
+	}
+	key := strings.ReplaceAll(path, fmt.Sprintf("https://%s.%s/", a.bucketName, a.endpoint), "")
+	if err := a.ossBucket.DeleteObject(key); err != nil {
+		logger.Errorf("AliyunOss Delete DeleteObject err:%+v", err.Error())
+		return err
+	}
+	return nil
+}
+
 func (a *AliyunOss) SetTagging(path string, tags map[string]string) error {
 	tagSet := make([]oss.Tag, 0)
 	for k, v := range tags {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/sidchai/compkg/pkg/logger"
@@ -126,6 +127,23 @@ func (v *VolcEngineTos) CopySelf(path string, storageClass string) error {
 }
 
 func (v *VolcEngineTos) SetTagging(path string, tags map[string]string) error {
+	return nil
+}
+
+// Delete 删除火山引擎 TOS 对象
+// path 为上传时返回的 voldtos://{bucket}/{key}，需剥离前缀得到 key
+func (v *VolcEngineTos) Delete(path string) error {
+	if v.tosClient == nil {
+		return errors.New("tosClient is nil")
+	}
+	key := strings.TrimPrefix(path, fmt.Sprintf("voldtos://%s/", v.bucketName))
+	if _, err := v.tosClient.DeleteObjectV2(context.Background(), &tos.DeleteObjectV2Input{
+		Bucket: v.bucketName,
+		Key:    key,
+	}); err != nil {
+		logger.Errorf("VolcEngineTos Delete DeleteObjectV2 err:%+v", err.Error())
+		return err
+	}
 	return nil
 }
 

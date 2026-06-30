@@ -1,13 +1,14 @@
 package cache
 
 import (
+	"testing"
+	"time"
+
 	"github.com/go-redis/redis/v8"
 	_ "github.com/sidchai/compkg/pkg/compression/impl"
 	"github.com/sidchai/compkg/pkg/serialization"
 	_ "github.com/sidchai/compkg/pkg/serialization/impl"
-	"github.com/sidchai/compkg/pkg/trace"
-	"testing"
-	"time"
+	trace "github.com/sidchai/compkg/pkg/tracelegacy"
 )
 
 type UserTest struct {

@@ -203,6 +203,20 @@ func (t *TencentCos) CopySelf(path string, storageClass string) error {
 	return nil
 }
 
+// Delete 删除腾讯云 COS 对象
+// path 为完整外链 URL，需先剥离 cosUrl 前缀得到 key
+func (t *TencentCos) Delete(path string) error {
+	if t.cosClient == nil {
+		return fmt.Errorf("cosClient is nil")
+	}
+	key := strings.ReplaceAll(path, t.cosUrl+"/", "")
+	if _, err := t.cosClient.Object.Delete(context.Background(), key); err != nil {
+		logger.Errorf("TencentCos Delete Delete err:%+v", err.Error())
+		return err
+	}
+	return nil
+}
+
 func NewClient(cosUrl, secretId, secretKey string) *cos.Client {
 	urlStr, _ := url.Parse(cosUrl)
 	baseURL := &cos.BaseURL{BucketURL: urlStr}

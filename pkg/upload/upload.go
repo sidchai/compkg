@@ -29,6 +29,7 @@ type Oss interface {
 	SetCustomStorage(isCustomStorage bool)                           // 设置是否自定义存储
 	GetPresignedURL(path string) (string, error)                     // 获取预签名URL
 	CopySelf(path string, storageClass string) error                 // 对象复制到自身（用于变更存储类型，如转为DEEP_ARCHIVE）
+	Delete(path string) error                                        // 删除对象（path 为完整外链 URL，与 PutACL/Download 一致）
 }
 
 func init() {

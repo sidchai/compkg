@@ -45,6 +45,7 @@ func (m *Minio) NewClient(ctx context.Context, opts ...upload.OssOption) {
 		miniox.WithSecretAccessKey(po.SecretAccessKey),
 		miniox.WithEndpoint(po.Endpoint),
 		miniox.WithSecure(po.Secure),
+		miniox.WithExpires(po.Expires),
 	)
 	m.client = minioX
 }
@@ -142,5 +143,17 @@ func (m *Minio) CopySelf(path string, storageClass string) error {
 
 func (m *Minio) SetTagging(path string, tags map[string]string) error {
 
+	return nil
+}
+
+// Delete 删除 MinIO/S3 对象，path 为完整外链 URL
+func (m *Minio) Delete(path string) error {
+	if m.client == nil {
+		return fmt.Errorf("minio client is nil")
+	}
+	if err := m.client.DeleteObject(path); err != nil {
+		logger.Errorf("Minio Delete DeleteObject err:%v", err.Error())
+		return err
+	}
 	return nil
 }

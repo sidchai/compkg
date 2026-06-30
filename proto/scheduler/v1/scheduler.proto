@@ -1,0 +1,1041 @@
+// =====================================================================
+// iot-scheduler gRPC 协议 · v1
+// =====================================================================
+// 配套：docs/rfc/05_unified_scheduler.md & sql/V1__init_scheduler.sql
+//
+// 三类服务：
+//   1. WorkerService      —— 业务方 SDK ↔ scheduler（双向流注册/派发/上报）
+//   2. SchedulerService   —— Web UI / 业务方业务 API ↔ scheduler（admin & submit）
+//   3. AppService         —— Web UI ↔ scheduler（应用注册管理）
+//
+// 版本：proto3，包名 scheduler.v1
+// =====================================================================
+syntax = "proto3";
+
+package scheduler.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "github.com/sidchai/compkg/proto/scheduler/v1;schedulerv1";
+option java_multiple_files = true;
+option java_package = "com.saisiyun.scheduler.v1";
+
+// =====================================================================
+// 公共类型
+// =====================================================================
+
+// 任务运行状态机
+enum RunStatus {
+  RUN_STATUS_UNSPECIFIED   = 0;
+  RUN_STATUS_PENDING       = 1;   // 入队待派发
+  RUN_STATUS_DISPATCHING   = 2;   // 派发中（CAS 抢锁阶段）
+  RUN_STATUS_DISPATCHED    = 3;   // 已派发，未收到 ACK
+  RUN_STATUS_RUNNING       = 4;   // worker 上报开始执行
+  RUN_STATUS_SUCCESS       = 5;
+  RUN_STATUS_FAILED        = 6;
+  RUN_STATUS_TIMEOUT       = 7;   // worker 未在 timeout 内上报结果
+  RUN_STATUS_DEAD          = 8;   // 重试耗尽，进入死信
+  RUN_STATUS_CANCELED      = 9;   // 主动取消
+  RUN_STATUS_DISPATCH_FAIL = 10;  // 派发失败（无 worker / 配额满 / max_inflight 满）
+}
+
+enum TriggerType {
+  TRIGGER_TYPE_UNSPECIFIED = 0;
+  TRIGGER_TYPE_CRON        = 1;
+  TRIGGER_TYPE_FIXED_RATE  = 2;
+  TRIGGER_TYPE_ONE_TIME    = 3;
+  TRIGGER_TYPE_API         = 4;   // 业务方 SubmitTask 触发
+  TRIGGER_TYPE_MANUAL      = 5;   // UI 手动触发
+  TRIGGER_TYPE_RETRY       = 6;   // 重试触发
+  TRIGGER_TYPE_NONE        = 7;
+}
+
+enum Priority {
+  PRIORITY_UNSPECIFIED = 0;
+  PRIORITY_HIGH        = 1;
+  PRIORITY_NORMAL      = 2;
+  PRIORITY_LOW         = 3;
+}
+
+enum ExecuteMode {
+  EXECUTE_MODE_UNSPECIFIED = 0;
+  EXECUTE_MODE_SINGLE      = 1;   // 单机执行
+  EXECUTE_MODE_SHARDING    = 2;   // 分片执行
+}
+
+
+// =====================================================================
+// 1. WorkerService —— 业务方 SDK ↔ scheduler
+// =====================================================================
+// 通信：长连接 gRPC 双向流（Connect 一开始就建立，全程复用）
+// 鉴权：SDK Connect 时携带 appKey + signature（HMAC-SHA256(appSecret)）
+// =====================================================================
+
+service WorkerService {
+  // 双向流：worker 注册并维持心跳 / scheduler 反向派发任务
+  //
+  // 客户端流方向：
+  //   1. RegisterRequest        首条消息，注册 worker + handler 列表
+  //   2. Heartbeat              每 5s 一条
+  //   3. JobAck                 收到 Dispatch 后立即 ACK
+  //   4. JobResult              任务执行完成上报（success/failed/timeout）
+  //
+  // 服务端流方向：
+  //   1. RegisterResponse       注册成功/失败应答
+  //   2. Dispatch               派发任务到 worker
+  //   3. Cancel                 主动取消正在执行的 run
+  //   4. Reload                 通知 worker 重新拉取 job 配置
+  rpc Connect(stream WorkerMessage) returns (stream SchedulerMessage);
+}
+
+// ----- Worker → Scheduler -----
+message WorkerMessage {
+  oneof payload {
+    RegisterRequest  register   = 1;
+    Heartbeat        heartbeat  = 2;
+    JobAck           ack        = 3;
+    JobResult        result     = 4;
+  }
+}
+
+message RegisterRequest {
+  string app_name        = 1;   // 必填，与 sched_app.app_name 一致
+  string app_key         = 2;   // 鉴权
+  string signature       = 3;   // HMAC-SHA256(appSecret, app_key + nonce + ts)
+  string nonce           = 4;
+  int64  ts              = 5;   // 客户端时间戳，防重放（5min 窗口）
+
+  string worker_id       = 6;   // 客户端生成（appName-instance-pid 等）
+  string instance_id     = 7;   // k8s pod name / hostname
+  string ip              = 8;
+  string sdk_version     = 9;
+
+  // worker 能够处理的 jobName 列表（RegisterHandler 注册的）
+  repeated string handler_jobs = 10;
+
+  // 客户端能力声明
+  int32  max_concurrency = 11;  // 该 worker 可同时处理的最大任务数
+}
+
+message Heartbeat {
+  string worker_id    = 1;
+  int64  ts           = 2;
+  int32  inflight     = 3;  // 当前正在处理的任务数
+  double load_avg     = 4;  // 系统 load（最近 1min）
+  int64  uptime_sec   = 5;
+}
+
+message JobAck {
+  string run_id       = 1;
+  bool   accepted     = 2;  // false = worker 拒收（如 inflight 已满）
+  string reason       = 3;  // 拒收原因
+}
+
+message JobResult {
+  string    run_id        = 1;
+  RunStatus status        = 2;  // SUCCESS / FAILED / TIMEOUT
+  string    output        = 3;  // 业务方返回的 output（JSON 字符串）
+  string    error         = 4;  // 错误信息（失败时）
+  int32    duration_ms    = 5;  // worker 视角的执行耗时
+  int64    started_at     = 6;
+  int64    ended_at       = 7;
+
+  // 用于业务方主动建议下次重试（覆盖 sched_job.retry_backoff）
+  int32    suggest_retry_after_sec = 8;  // 0 表示不建议
+}
+
+// ----- Scheduler → Worker -----
+message SchedulerMessage {
+  oneof payload {
+    RegisterResponse register = 1;
+    Dispatch         dispatch = 2;
+    Cancel           cancel   = 3;
+    Reload           reload   = 4;
+  }
+}
+
+message RegisterResponse {
+  bool   ok                  = 1;
+  string error               = 2;
+  int64  server_ts           = 3;  // 用于 SDK 校时
+  int32  heartbeat_interval  = 4;  // 服务端要求的心跳间隔（秒）
+
+  // 告知 worker 当前 scheduler 集群的当前 leader（用于诊断）
+  string scheduler_leader    = 5;
+}
+
+message Dispatch {
+  string      run_id        = 1;
+  string      job_name      = 2;
+  string      biz_key       = 3;
+  bytes       payload       = 4;  // 业务方提交的 payload（≤ payload_max_bytes）
+
+  int32       timeout_sec   = 5;
+  int32       retry_count   = 6;  // 当前是第几次重试
+  int32       retry_max     = 7;
+  int32       shard_index   = 8;
+  int32       shard_total   = 9;
+
+  TriggerType trigger_type  = 10;
+  string      trace_id      = 11;
+  string      span_id       = 12;
+
+  // 派发时间，用于 worker 判断是否陈旧任务
+  int64       dispatched_at = 13;
+}
+
+message Cancel {
+  string run_id  = 1;
+  string reason  = 2;
+}
+
+message Reload {
+  // 空 = 重载所有；非空 = 仅这些 jobName
+  repeated string job_names = 1;
+  int64           term      = 2;  // 配置版本号
+}
+
+
+// =====================================================================
+// 2. SchedulerService —— 业务/UI ↔ scheduler（submit & admin）
+// =====================================================================
+// 通信：普通 unary gRPC + REST 网关（gRPC-Gateway 自动暴露 HTTP）
+// 鉴权：业务侧 SubmitTask 用 appKey + signature；UI 侧用 JWT
+// =====================================================================
+
+service SchedulerService {
+  // === 业务方使用 ===
+
+  // 提交一次 API 任务（trigger_type = api）
+  // 注：业务方主线建议走 gRPC + HMAC；REST 端点仅供调试/低频场景
+  rpc SubmitTask(SubmitTaskRequest) returns (SubmitTaskResponse) {
+    option (google.api.http) = { post: "/api/v1/tasks:submit" body: "*" };
+  }
+
+  // 查询 run 状态
+  rpc GetRun(GetRunRequest) returns (Run) {
+    option (google.api.http) = { get: "/api/v1/runs/{run_id}" };
+  }
+
+  // 取消未完成的 run
+  rpc CancelRun(CancelRunRequest) returns (CancelRunResponse) {
+    option (google.api.http) = { post: "/api/v1/runs/{run_id}:cancel" body: "*" };
+  }
+
+
+  // === Web UI 使用 ===
+
+  // 任务管理
+  rpc ListJobs(ListJobsRequest) returns (ListJobsResponse) {
+    option (google.api.http) = { get: "/api/v1/jobs" };
+  }
+  rpc GetJob(GetJobRequest) returns (Job) {
+    option (google.api.http) = { get: "/api/v1/jobs/{job_name}" };
+  }
+  rpc CreateJob(CreateJobRequest) returns (Job) {
+    option (google.api.http) = { post: "/api/v1/jobs" body: "*" };
+  }
+  rpc UpdateJob(UpdateJobRequest) returns (Job) {
+    option (google.api.http) = { patch: "/api/v1/jobs/{job.job_name}" body: "*" };
+  }
+  rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse) {
+    option (google.api.http) = { delete: "/api/v1/jobs/{job_name}" };
+  }
+  rpc PauseJob(PauseJobRequest) returns (Job) {
+    option (google.api.http) = { post: "/api/v1/jobs/{job_name}:pause" body: "*" };
+  }
+  rpc ResumeJob(ResumeJobRequest) returns (Job) {
+    option (google.api.http) = { post: "/api/v1/jobs/{job_name}:resume" body: "*" };
+  }
+  rpc TriggerJob(TriggerJobRequest) returns (TriggerJobResponse) {
+    option (google.api.http) = { post: "/api/v1/jobs/{job_name}:trigger" body: "*" };
+  }
+
+  // 运行记录
+  rpc ListRuns(ListRunsRequest) returns (ListRunsResponse) {
+    option (google.api.http) = { get: "/api/v1/runs" };
+  }
+  rpc RetryRun(RetryRunRequest) returns (RetryRunResponse) {
+    option (google.api.http) = { post: "/api/v1/runs/{run_id}:retry" body: "*" };
+  }
+
+  // Worker 节点
+  rpc ListWorkers(ListWorkersRequest) returns (ListWorkersResponse) {
+    option (google.api.http) = { get: "/api/v1/workers" };
+  }
+  rpc KickWorker(KickWorkerRequest) returns (KickWorkerResponse) {
+    option (google.api.http) = { post: "/api/v1/workers/{worker_id}:kick" body: "*" };
+  }
+
+  // 仪表盘
+  rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse) {
+    option (google.api.http) = { get: "/api/v1/dashboard" };
+  }
+
+  // 双人复核
+  rpc ListPendingChanges(ListPendingChangesRequest) returns (ListPendingChangesResponse) {
+    option (google.api.http) = { get: "/api/v1/pendingChanges" };
+  }
+  rpc ApprovePendingChange(ApprovePendingChangeRequest) returns (ApprovePendingChangeResponse) {
+    option (google.api.http) = { post: "/api/v1/pendingChanges/{id}:approve" body: "*" };
+  }
+  rpc RejectPendingChange(RejectPendingChangeRequest) returns (RejectPendingChangeResponse) {
+    option (google.api.http) = { post: "/api/v1/pendingChanges/{id}:reject" body: "*" };
+  }
+}
+
+// ----- Submit -----
+message SubmitTaskRequest {
+  string app_name   = 1;
+  string app_key    = 2;
+  string signature  = 3;
+  string nonce      = 4;
+  int64  ts         = 5;
+
+  string job_name   = 6;
+  string biz_key    = 7;  // 幂等 key（同 biz_key 在 dedupe_window_sec 内只入队一次）
+  bytes  payload    = 8;
+  int32  dedupe_window_sec = 9;  // 0 = 不去重
+
+  // 透传 trace context
+  string trace_id   = 10;
+  string span_id    = 11;
+}
+
+message SubmitTaskResponse {
+  string    run_id   = 1;
+  RunStatus status   = 2;  // 通常 PENDING
+  bool      dedup    = 3;  // true 表示命中去重，返回的是已存在 runId
+}
+
+// ----- Get / Cancel Run -----
+message GetRunRequest  { string run_id = 1; }
+message CancelRunRequest  { string run_id = 1; string reason = 2; }
+message CancelRunResponse { bool ok = 1; string error = 2; }
+
+// ----- Job CRUD -----
+message Job {
+  int64       id                  = 1;
+  string      job_name            = 2;
+  string      app_name            = 3;
+  string      description         = 4;
+
+  TriggerType trigger_type        = 5;
+  string      cron_expr           = 6;
+  int32       fixed_rate_seconds  = 7;
+  int64       one_time_at         = 8;
+  string      timezone            = 9;
+  string      misfire_policy      = 10;
+
+  ExecuteMode execute_mode        = 11;
+  int32       shard_total         = 12;
+  int32       timeout_seconds     = 13;
+  int32       max_inflight        = 14;
+  int32       retry_max           = 15;
+  string      retry_backoff       = 16;  // JSON 数组字符串
+
+  bool        enabled             = 17;
+  string      status              = 18;  // waiting_worker/ready/paused/disabled
+
+  Priority    priority            = 19;
+  bool        critical            = 20;
+
+  string      created_by          = 21;
+  string      updated_by          = 22;
+  int64       created_at          = 23;
+  int64       updated_at          = 24;
+
+  // 关联信息（List 时填充）
+  double      success_rate_30d    = 25;  // [0,1]
+  int64       next_run_at         = 26;  // 仅 cron/fixed_rate
+}
+
+message ListJobsRequest {
+  string      app_name        = 1;
+  string      keyword         = 2;
+  TriggerType trigger_type    = 3;
+  string      status          = 4;
+  Priority    priority        = 5;
+  int32       page            = 6;
+  int32       page_size       = 7;
+}
+
+message ListJobsResponse {
+  repeated Job jobs       = 1;
+  int64        total      = 2;
+}
+
+message GetJobRequest    { string job_name = 1; }
+message DeleteJobRequest { string job_name = 1; string confirm = 2; }
+message DeleteJobResponse { bool ok = 1; string error = 2; }
+
+message CreateJobRequest {
+  Job job = 1;
+}
+
+message UpdateJobRequest {
+  Job  job              = 1;
+  bool require_approval = 2;  // 服务端判断 critical 时强制 true，会进入 pending
+}
+
+message PauseJobRequest  { string job_name = 1; }
+message ResumeJobRequest { string job_name = 1; }
+
+message TriggerJobRequest {
+  string job_name = 1;
+  string biz_key  = 2;
+  bytes  payload  = 3;
+  string operator = 4;
+}
+message TriggerJobResponse { string run_id = 1; }
+
+// ----- Run -----
+message Run {
+  string      run_id        = 1;
+  string      job_name      = 2;
+  string      app_name      = 3;
+  string      biz_key       = 4;
+  bytes       payload       = 5;
+  bytes       output        = 6;
+
+  TriggerType trigger_type  = 7;
+  string      trigger_source= 8;
+
+  RunStatus   status        = 9;
+  string      error         = 10;
+  int32       duration_ms   = 11;
+
+  string      worker_id     = 12;
+  int32       shard_index   = 13;
+  int32       shard_total   = 14;
+
+  int32       retry_count   = 15;
+  string      parent_run_id = 16;
+  int64       next_run_at   = 17;
+
+  string      trace_id      = 18;
+  string      span_id       = 19;
+
+  int64       created_at     = 20;  // 秒
+  int64       dispatching_at = 21;  // 毫秒，CAS 抢锁开始
+  int64       dispatched_at  = 22;  // 毫秒，派发到 worker
+  int64       started_at     = 23;  // 毫秒
+  int64       ended_at       = 24;  // 毫秒
+}
+
+message ListRunsRequest {
+  string    job_name      = 1;
+  string    app_name      = 2;
+  RunStatus status        = 3;
+  string    biz_key_like  = 4;
+  string    worker_id     = 5;
+  int64     since         = 6;  // 时间戳秒
+  int64     until         = 7;
+  int32     page          = 8;
+  int32     page_size     = 9;
+}
+message ListRunsResponse {
+  repeated Run runs  = 1;
+  int64        total = 2;
+}
+
+message RetryRunRequest  { string run_id = 1; }
+message RetryRunResponse { string new_run_id = 1; }
+
+// ----- Worker -----
+message Worker {
+  int64           id              = 1;
+  string          worker_id       = 2;
+  string          app_name        = 3;
+  string          instance_id     = 4;
+  string          ip              = 5;
+  string          sdk_version     = 6;
+  repeated string handler_jobs    = 7;
+  int32           inflight        = 8;
+  double          load_avg        = 9;
+  string          status          = 10;  // online/draining/offline
+  int64           connected_at    = 11;
+  int64           last_heartbeat  = 12;
+}
+
+message ListWorkersRequest {
+  string app_name = 1;
+  string status   = 2;
+}
+message ListWorkersResponse {
+  repeated Worker workers = 1;
+}
+
+message KickWorkerRequest  { string worker_id = 1; string reason = 2; }
+message KickWorkerResponse { bool ok = 1; string error = 2; }
+
+// ----- Dashboard -----
+message GetDashboardRequest { int32 window_hours = 1; }
+message GetDashboardResponse {
+  int64 total_jobs            = 1;
+  int64 today_runs            = 2;
+  int64 today_failed          = 3;
+  int64 online_workers        = 4;
+  int64 total_workers         = 5;
+
+  // 时序点（按 1h 分桶）
+  repeated TimePoint runs_trend      = 6;
+  repeated TimePoint fail_rate_trend = 7;
+
+  // Top 榜
+  repeated JobMetricRow recent_failed_top   = 8;
+  repeated JobMetricRow dispatch_failed_top = 9;
+  repeated JobMetricRow inflight_top        = 10;
+}
+
+message TimePoint {
+  int64  ts      = 1;
+  double success = 2;
+  double failed  = 3;
+  double rate    = 4;
+}
+
+message JobMetricRow {
+  string job_name = 1;
+  int64  count    = 2;
+}
+
+// ----- 双人复核 -----
+message PendingChange {
+  int64  id           = 1;
+  string target_type  = 2;
+  string target_id    = 3;
+  string proposer     = 4;
+  int64  proposed_at  = 5;
+  int64  expires_at   = 6;
+  string change_diff  = 7;  // JSON
+  string status       = 8;
+  string approver     = 9;
+  int64  approved_at  = 10;
+}
+
+message ListPendingChangesRequest  { string status = 1; }
+message ListPendingChangesResponse { repeated PendingChange items = 1; }
+
+message ApprovePendingChangeRequest { int64 id = 1; string approver = 2; }
+message ApprovePendingChangeResponse { bool ok = 1; string error = 2; }
+
+message RejectPendingChangeRequest  { int64 id = 1; string approver = 2; string reason = 3; }
+message RejectPendingChangeResponse { bool ok = 1; string error = 2; }
+
+
+// =====================================================================
+// 3. AppService —— Web UI ↔ scheduler（应用注册）
+// =====================================================================
+service AppService {
+  rpc ListApps(ListAppsRequest) returns (ListAppsResponse) {
+    option (google.api.http) = { get: "/api/v1/apps" };
+  }
+  rpc GetApp(GetAppRequest) returns (App) {
+    option (google.api.http) = { get: "/api/v1/apps/{app_name}" };
+  }
+  rpc CreateApp(CreateAppRequest) returns (CreateAppResponse) {
+    option (google.api.http) = { post: "/api/v1/apps" body: "*" };
+  }
+  rpc UpdateApp(UpdateAppRequest) returns (App) {
+    option (google.api.http) = { patch: "/api/v1/apps/{app_name}" body: "*" };
+  }
+  rpc ResetAppSecret(ResetAppSecretRequest) returns (ResetAppSecretResponse) {
+    option (google.api.http) = { post: "/api/v1/apps/{app_name}:resetSecret" body: "*" };
+  }
+  rpc DisableApp(DisableAppRequest) returns (App) {
+    option (google.api.http) = { post: "/api/v1/apps/{app_name}:disable" body: "*" };
+  }
+  // EnableApp 重新启用应用（admin-only）。
+  rpc EnableApp(EnableAppRequest) returns (App) {
+    option (google.api.http) = { post: "/api/v1/apps/{app_name}:enable" body: "*" };
+  }
+  rpc DeleteApp(DeleteAppRequest) returns (DeleteAppResponse) {
+    option (google.api.http) = { delete: "/api/v1/apps/{app_name}" };
+  }
+}
+
+message App {
+  int64  id                = 1;
+  string app_name          = 2;
+  string app_key           = 3;
+  string owner             = 4;
+  string description       = 5;
+  bool   enabled           = 6;
+  int32  qps_quota         = 7;
+  int32  payload_max_bytes = 8;
+  string webhook_url       = 9;
+  int64  created_at        = 10;
+  int64  updated_at        = 11;
+
+  // List 时填充
+  int32  online_workers    = 12;
+  int32  total_workers     = 13;
+  int32  job_count         = 14;
+}
+
+message ListAppsRequest  { string keyword = 1; }
+message ListAppsResponse { repeated App apps = 1; }
+
+message GetAppRequest { string app_name = 1; }
+
+message CreateAppRequest {
+  string app_name          = 1;
+  string owner             = 2;
+  string description       = 3;
+  int32  qps_quota         = 4;
+  int32  payload_max_bytes = 5;
+  string webhook_url       = 6;
+}
+message CreateAppResponse {
+  App    app        = 1;
+  string app_secret = 2;  // 明文，仅返回一次
+}
+
+message UpdateAppRequest {
+  string app_name          = 1;  // 不可改，作为 key
+  string owner             = 2;
+  string description       = 3;
+  int32  qps_quota         = 4;
+  int32  payload_max_bytes = 5;
+  string webhook_url       = 6;
+}
+
+message ResetAppSecretRequest  { string app_name = 1; string confirm = 2; }
+message ResetAppSecretResponse { string app_secret = 1; }
+
+message DisableAppRequest { string app_name = 1; }
+message EnableAppRequest  { string app_name = 1; }
+message DeleteAppRequest  { string app_name = 1; string confirm = 2; }
+message DeleteAppResponse { bool ok = 1; string error = 2; }
+
+
+// =====================================================================
+// 4. AlertService —— Web UI ↔ scheduler（告警规则 + 通知渠道 + 绑定 + 事件）
+// =====================================================================
+service AlertService {
+  // === 告警规则池 ===
+  rpc ListAlertRules(ListAlertRulesRequest) returns (ListAlertRulesResponse) {
+    option (google.api.http) = { get: "/api/v1/alert/rules" };
+  }
+  rpc GetAlertRule(GetAlertRuleRequest) returns (AlertRule) {
+    option (google.api.http) = { get: "/api/v1/alert/rules/{id}" };
+  }
+  rpc CreateAlertRule(CreateAlertRuleRequest) returns (AlertRule) {
+    option (google.api.http) = { post: "/api/v1/alert/rules" body: "*" };
+  }
+  rpc UpdateAlertRule(UpdateAlertRuleRequest) returns (AlertRule) {
+    option (google.api.http) = { patch: "/api/v1/alert/rules/{rule.id}" body: "*" };
+  }
+  rpc DeleteAlertRule(DeleteAlertRuleRequest) returns (DeleteAlertRuleResponse) {
+    option (google.api.http) = { delete: "/api/v1/alert/rules/{id}" };
+  }
+
+  // === 通知渠道池 ===
+  rpc ListAlertChannels(ListAlertChannelsRequest) returns (ListAlertChannelsResponse) {
+    option (google.api.http) = { get: "/api/v1/alert/channels" };
+  }
+  rpc GetAlertChannel(GetAlertChannelRequest) returns (AlertChannel) {
+    option (google.api.http) = { get: "/api/v1/alert/channels/{id}" };
+  }
+  rpc CreateAlertChannel(CreateAlertChannelRequest) returns (AlertChannel) {
+    option (google.api.http) = { post: "/api/v1/alert/channels" body: "*" };
+  }
+  rpc UpdateAlertChannel(UpdateAlertChannelRequest) returns (AlertChannel) {
+    option (google.api.http) = { patch: "/api/v1/alert/channels/{id}" body: "*" };
+  }
+  rpc DeleteAlertChannel(DeleteAlertChannelRequest) returns (DeleteAlertChannelResponse) {
+    option (google.api.http) = { delete: "/api/v1/alert/channels/{id}" };
+  }
+  rpc TestAlertChannel(TestAlertChannelRequest) returns (TestAlertChannelResponse) {
+    option (google.api.http) = { post: "/api/v1/alert/channels/{id}:test" body: "*" };
+  }
+
+  // === Job ↔ Rule ↔ Channel 绑定 ===
+  rpc ListAlertBindings(ListAlertBindingsRequest) returns (ListAlertBindingsResponse) {
+    option (google.api.http) = { get: "/api/v1/alert/bindings" };
+  }
+  rpc BindJobAlert(BindJobAlertRequest) returns (AlertBinding) {
+    option (google.api.http) = { post: "/api/v1/alert/bindings" body: "*" };
+  }
+  rpc UnbindJobAlert(UnbindJobAlertRequest) returns (UnbindJobAlertResponse) {
+    option (google.api.http) = { delete: "/api/v1/alert/bindings/{id}" };
+  }
+
+  // === 告警事件流水 ===
+  rpc ListAlertEvents(ListAlertEventsRequest) returns (ListAlertEventsResponse) {
+    option (google.api.http) = { get: "/api/v1/alert/events" };
+  }
+  rpc ResolveAlert(ResolveAlertRequest) returns (ResolveAlertResponse) {
+    option (google.api.http) = { post: "/api/v1/alert/events/{id}:resolve" body: "*" };
+  }
+  rpc SilenceAlert(SilenceAlertRequest) returns (SilenceAlertResponse) {
+    option (google.api.http) = { post: "/api/v1/alert/events/{id}:silence" body: "*" };
+  }
+}
+
+enum AlertConditionType {
+  ALERT_CONDITION_UNSPECIFIED         = 0;
+  ALERT_CONDITION_CONSECUTIVE_FAIL    = 1;  // 连续失败 N 次
+  ALERT_CONDITION_TIMEOUT             = 2;  // 单次超时
+  ALERT_CONDITION_DISPATCH_FAIL       = 3;  // 派发失败
+  ALERT_CONDITION_SUCCESS_RATE_BELOW  = 4;  // 成功率 < X%
+}
+
+enum AlertChannelType {
+  ALERT_CHANNEL_UNSPECIFIED = 0;
+  ALERT_CHANNEL_FEISHU      = 1;
+  ALERT_CHANNEL_DINGTALK    = 2;
+  ALERT_CHANNEL_WECOM       = 3;
+  ALERT_CHANNEL_EMAIL       = 4;
+  ALERT_CHANNEL_WEBHOOK     = 5;
+}
+
+enum AlertSeverity {
+  ALERT_SEVERITY_UNSPECIFIED = 0;
+  ALERT_SEVERITY_INFO        = 1;
+  ALERT_SEVERITY_WARN        = 2;
+  ALERT_SEVERITY_ERROR       = 3;
+  ALERT_SEVERITY_CRITICAL    = 4;
+}
+
+// ----- AlertRule -----
+message AlertRule {
+  int64              id              = 1;
+  string             rule_name       = 2;
+  AlertConditionType condition_type  = 3;
+  string             threshold       = 4;
+  int32              window_seconds  = 5;
+  int32              silence_seconds = 6;
+  int32              escalate_after  = 7;
+  int64              escalate_to     = 8;  // channel id
+  bool               enabled         = 9;
+  string             created_by      = 10;
+  int64              created_at      = 11;
+  int64              updated_at      = 12;
+
+  // List 时填充：绑定的 Job 数
+  int32              binding_count   = 13;
+}
+
+message ListAlertRulesRequest {
+  string keyword = 1;
+  bool   enabled_only = 2;
+}
+message ListAlertRulesResponse { repeated AlertRule rules = 1; }
+message GetAlertRuleRequest { int64 id = 1; }
+message CreateAlertRuleRequest { AlertRule rule = 1; }
+message UpdateAlertRuleRequest { AlertRule rule = 1; }
+message DeleteAlertRuleRequest { int64 id = 1; }
+message DeleteAlertRuleResponse { bool ok = 1; string error = 2; }
+
+// ----- AlertChannel -----
+message AlertChannel {
+  int64            id             = 1;
+  string           channel_name   = 2;
+  AlertChannelType channel_type   = 3;
+  string           webhook_url    = 4;  // 返回时尾 4 位脱敏（…a8f2）
+  string           template       = 5;
+  string           extra_config   = 6;  // JSON
+  bool             enabled        = 7;
+  int64            last_test_at   = 8;
+  bool             last_test_ok   = 9;
+  int64            created_at     = 10;
+  int64            updated_at     = 11;
+}
+
+message ListAlertChannelsRequest { AlertChannelType channel_type = 1; }
+message ListAlertChannelsResponse { repeated AlertChannel channels = 1; }
+message GetAlertChannelRequest { int64 id = 1; }
+
+message CreateAlertChannelRequest {
+  string           channel_name = 1;
+  AlertChannelType channel_type = 2;
+  string           webhook_url  = 3;
+  string           secret       = 4;  // 明文，服务端加密
+  string           template     = 5;
+  string           extra_config = 6;
+}
+
+message UpdateAlertChannelRequest {
+  int64            id           = 1;
+  string           channel_name = 2;
+  string           webhook_url  = 3;
+  string           secret       = 4;  // 空 = 不改
+  string           template     = 5;
+  string           extra_config = 6;
+  bool             enabled      = 7;
+}
+
+message DeleteAlertChannelRequest { int64 id = 1; }
+message DeleteAlertChannelResponse { bool ok = 1; string error = 2; }
+
+message TestAlertChannelRequest { int64 id = 1; string custom_message = 2; }
+message TestAlertChannelResponse { bool ok = 1; string error = 2; int64 latency_ms = 3; }
+
+// ----- AlertBinding -----
+message AlertBinding {
+  int64  id         = 1;
+  string job_name   = 2;
+  int64  rule_id    = 3;
+  int64  channel_id = 4;
+  bool   enabled    = 5;
+  int64  created_at = 6;
+
+  // Join 字段（List 时填充）
+  string rule_name    = 7;
+  string channel_name = 8;
+}
+
+message ListAlertBindingsRequest {
+  string job_name   = 1;
+  int64  rule_id    = 2;
+  int64  channel_id = 3;
+}
+message ListAlertBindingsResponse { repeated AlertBinding bindings = 1; }
+
+message BindJobAlertRequest {
+  string job_name   = 1;
+  int64  rule_id    = 2;
+  int64  channel_id = 3;
+}
+message UnbindJobAlertRequest { int64 id = 1; }
+message UnbindJobAlertResponse { bool ok = 1; string error = 2; }
+
+// ----- AlertEvent -----
+message AlertEvent {
+  int64         id             = 1;
+  string        event_key      = 2;
+  string        job_name       = 3;
+  int64         rule_id        = 4;
+  int64         channel_id     = 5;
+  AlertSeverity severity       = 6;
+  string        summary        = 7;
+  string        detail         = 8;
+  string        status         = 9;  // firing/resolved/escalated/silenced
+  int64         notified_at    = 10;
+  int64         resolved_at    = 11;
+  int64         silence_until  = 12;
+  int64         created_at     = 13;
+}
+
+message ListAlertEventsRequest {
+  string job_name = 1;
+  string status   = 2;
+  int64  since    = 3;
+  int64  until    = 4;
+  int32  page     = 5;
+  int32  page_size = 6;
+}
+message ListAlertEventsResponse {
+  repeated AlertEvent events = 1;
+  int64 total = 2;
+}
+
+message ResolveAlertRequest { int64 id = 1; string operator = 2; }
+message ResolveAlertResponse { bool ok = 1; string error = 2; }
+
+message SilenceAlertRequest { int64 id = 1; int32 duration_sec = 2; string operator = 3; }
+message SilenceAlertResponse { bool ok = 1; int64 silence_until = 2; }
+
+
+// =====================================================================
+// 5. UserService —— Web UI ↔ scheduler（用户管理 + SSO）
+// =====================================================================
+service UserService {
+  // SSO 登录回调（dev 模式：任意 username 通过；P1 接入飞书/钉钉）
+  rpc SsoLogin(SsoLoginRequest) returns (SsoLoginResponse) {
+    option (google.api.http) = { post: "/api/v1/auth/ssoLogin" body: "*" };
+  }
+
+  // 密码登录（用户名 + 密码 → JWT）。匿名可调用，不走 JWT 拦截器。
+  rpc PasswordLogin(PasswordLoginRequest) returns (SsoLoginResponse) {
+    option (google.api.http) = { post: "/api/v1/auth/login" body: "*" };
+  }
+
+  // 当前会话用户改自己密码（需登录）
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {
+    option (google.api.http) = { post: "/api/v1/users/me:changePassword" body: "*" };
+  }
+
+  // 当前会话用户
+  rpc GetCurrentUser(GetCurrentUserRequest) returns (User) {
+    option (google.api.http) = { get: "/api/v1/users/me" };
+  }
+
+  // 用户管理（仅 admin）
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
+    option (google.api.http) = { get: "/api/v1/users" };
+  }
+  // CreateUser admin 直接建账号：username + 初始密码 + 角色（替代 SSO 邀请）
+  rpc CreateUser(CreateUserRequest) returns (User) {
+    option (google.api.http) = { post: "/api/v1/users" body: "*" };
+  }
+  // InviteUser 保留：兼容旧 SSO 邀请语义，不传密码
+  rpc InviteUser(InviteUserRequest) returns (User) {
+    option (google.api.http) = { post: "/api/v1/users:invite" body: "*" };
+  }
+  rpc UpdateUserRole(UpdateUserRoleRequest) returns (User) {
+    option (google.api.http) = { post: "/api/v1/users/{id}:updateRole" body: "*" };
+  }
+  rpc DisableUser(DisableUserRequest) returns (DisableUserResponse) {
+    option (google.api.http) = { post: "/api/v1/users/{id}:disable" body: "*" };
+  }
+  // EnableUser 重新启用账户（admin-only）。
+  rpc EnableUser(EnableUserRequest) returns (User) {
+    option (google.api.http) = { post: "/api/v1/users/{id}:enable" body: "*" };
+  }
+  // ResetUserPassword admin 重置他人密码：传新密码 + must_change_on_next_login 标志
+  rpc ResetUserPassword(ResetUserPasswordRequest) returns (ResetUserPasswordResponse) {
+    option (google.api.http) = { post: "/api/v1/users/{id}:resetPassword" body: "*" };
+  }
+}
+
+enum UserRole {
+  USER_ROLE_UNSPECIFIED = 0;
+  USER_ROLE_ADMIN       = 1;  // 完整管理权限（含 critical 改动复核）
+  USER_ROLE_OPERATOR    = 2;  // 触发/暂停/取消
+  USER_ROLE_VIEWER      = 3;  // 仅查看
+}
+
+message User {
+  int64    id            = 1;
+  string   username      = 2;
+  string   display_name  = 3;
+  string   email         = 4;
+  string   sso_provider  = 5;  // feishu/dingtalk/local/...
+  string   sso_subject   = 6;  // 脱敏返回
+  UserRole role          = 7;
+  bool     enabled       = 8;
+  int64    last_login_at = 9;
+  int64    created_at    = 10;
+  int64    updated_at    = 11;
+  // 密码相关（用于 UI 区分 SSO-only 用户 vs 密码用户）
+  bool     has_password              = 12;  // 是否已设置密码
+  bool     must_change_password      = 13;  // admin 重置/初始建号后强制改密
+  int64    password_changed_at       = 14;  // 上次改密时间（秒，0=从未改）
+}
+
+message SsoLoginRequest {
+  string provider = 1;
+  string code     = 2;  // SSO 回调 code
+  string state    = 3;
+}
+message SsoLoginResponse {
+  User   user        = 1;
+  string access_token = 2;  // JWT
+  int64  expires_at  = 3;
+}
+
+message GetCurrentUserRequest {}
+
+message ListUsersRequest {
+  UserRole role        = 1;
+  bool     enabled_only = 2;
+  string   keyword     = 3;
+  int32    page        = 4;
+  int32    page_size   = 5;
+}
+message ListUsersResponse {
+  repeated User users = 1;
+  int64 total = 2;
+}
+
+message InviteUserRequest {
+  string   username     = 1;
+  string   display_name = 2;
+  string   email        = 3;
+  string   sso_provider = 4;
+  string   sso_subject  = 5;
+  UserRole role         = 6;
+}
+
+message UpdateUserRoleRequest { int64 id = 1; UserRole role = 2; }
+message DisableUserRequest    { int64 id = 1; }
+message DisableUserResponse   { bool ok = 1; string error = 2; }
+message EnableUserRequest     { int64 id = 1; }
+
+// CreateUserRequest admin 直接建账号；password 必填，首次登录强制改密。
+message CreateUserRequest {
+  string   username     = 1;  // 必填，[a-zA-Z0-9_.-]{3,64}
+  string   display_name = 2;
+  string   email        = 3;
+  string   password     = 4;  // 必填，8-72 字节（bcrypt 上限）
+  UserRole role         = 5;
+}
+
+// PasswordLoginRequest 用户名 + 密码登录。
+message PasswordLoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+// ChangePasswordRequest 当前用户改自己密码。
+message ChangePasswordRequest {
+  string old_password = 1;  // 强制改密首登可留空
+  string new_password = 2;
+}
+message ChangePasswordResponse { bool ok = 1; }
+
+// ResetUserPasswordRequest admin 重置他人密码。
+message ResetUserPasswordRequest {
+  int64  id                          = 1;
+  string new_password                = 2;
+  bool   must_change_on_next_login   = 3;  // 默认 true
+}
+message ResetUserPasswordResponse { bool ok = 1; }
+
+
+// =====================================================================
+// 6. AuditService —— Web UI ↔ scheduler（审计日志）
+// =====================================================================
+service AuditService {
+  rpc ListAuditLogs(ListAuditLogsRequest) returns (ListAuditLogsResponse) {
+    option (google.api.http) = { get: "/api/v1/audit/logs" };
+  }
+  rpc GetAuditLog(GetAuditLogRequest) returns (AuditLog) {
+    option (google.api.http) = { get: "/api/v1/audit/logs/{id}" };
+  }
+  rpc ExportAuditLogs(ExportAuditLogsRequest) returns (ExportAuditLogsResponse) {
+    option (google.api.http) = { post: "/api/v1/audit/logs:export" body: "*" };
+  }
+}
+
+message AuditLog {
+  int64  id          = 1;
+  string actor       = 2;
+  string actor_ip    = 3;
+  string action      = 4;  // create/edit/delete/trigger/pause/...
+  string target_type = 5;  // app/job/run/rule/channel/user
+  string target_id   = 6;
+  string diff        = 7;  // JSON
+  string request_id  = 8;
+  int64  created_at  = 9;
+}
+
+message ListAuditLogsRequest {
+  string actor       = 1;
+  string action      = 2;
+  string target_type = 3;
+  string target_like = 4;
+  int64  since       = 5;
+  int64  until       = 6;
+  int32  page        = 7;
+  int32  page_size   = 8;
+}
+message ListAuditLogsResponse {
+  repeated AuditLog logs = 1;
+  int64 total = 2;
+}
+
+message GetAuditLogRequest { int64 id = 1; }
+
+message ExportAuditLogsRequest {
+  ListAuditLogsRequest filter = 1;
+  string format = 2;  // csv / json
+}
+message ExportAuditLogsResponse {
+  bytes  data         = 1;
+  string content_type = 2;
+  string filename     = 3;
+}

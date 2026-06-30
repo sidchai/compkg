@@ -1,0 +1,62 @@
+# =====================================================================
+# compkg proto stub generator (Windows / PowerShell)
+# =====================================================================
+# Output: stubs are written next to each .proto file (paths=source_relative)
+#   e.g. proto/scheduler/v1/scheduler.proto
+#        proto/scheduler/v1/scheduler.pb.go
+#        proto/scheduler/v1/scheduler_grpc.pb.go
+#
+# This matches the import path declared via `option go_package`:
+#   github.com/sidchai/compkg/proto/scheduler/v1
+#
+# Dependencies:
+#   - protoc                 https://github.com/protocolbuffers/protobuf/releases
+#   - protoc-gen-go          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+#   - protoc-gen-go-grpc     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+# =====================================================================
+
+$ErrorActionPreference = "Stop"
+
+$ProtoRoot    = $PSScriptRoot
+$ProtoRootFwd = ($ProtoRoot -replace '\\','/')
+
+Write-Host "[1/3] Checking toolchain..." -ForegroundColor Cyan
+$protocVersion = & protoc --version
+$genGoPath     = (Get-Command protoc-gen-go     -ErrorAction Stop).Source
+$genGoGrpcPath = (Get-Command protoc-gen-go-grpc -ErrorAction Stop).Source
+Write-Host "  protoc:             $protocVersion"
+Write-Host "  protoc-gen-go:      $genGoPath"
+Write-Host "  protoc-gen-go-grpc: $genGoGrpcPath"
+
+Write-Host "[2/3] Generating Go stubs (in-place, paths=source_relative)..." -ForegroundColor Cyan
+Push-Location $ProtoRoot
+try {
+    $protoFiles = @()
+    Get-ChildItem -Path . -Filter "*.proto" -Recurse | ForEach-Object {
+        $rel = $_.FullName.Substring($ProtoRoot.Length + 1) -replace '\\','/'
+        $protoFiles += $rel
+        Write-Host "  -> $rel"
+    }
+
+    & protoc `
+        --proto_path=$ProtoRootFwd `
+        --go_out=. `
+        --go_opt=paths=source_relative `
+        --go-grpc_out=. `
+        --go-grpc_opt=paths=source_relative `
+        @protoFiles
+} finally {
+    Pop-Location
+}
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[X] protoc failed with exit code $LASTEXITCODE" -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+Write-Host "[3/3] Done" -ForegroundColor Green
+Get-ChildItem -Path $ProtoRoot -Recurse -Filter "*.pb.go" | ForEach-Object {
+    $rel  = $_.FullName.Substring($ProtoRoot.Length + 1)
+    $size = [math]::Round($_.Length / 1KB, 1)
+    Write-Host ('  {0,-50} {1,7} KB' -f $rel, $size)
+}

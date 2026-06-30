@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"go.uber.org/zap"
@@ -89,28 +88,20 @@ func (l *Logger) Log(level hlog.Level, kvs ...interface{}) {
 
 func (l *Logger) Logf(level hlog.Level, format string, kvs ...interface{}) {
 	logger := l.l.Sugar().With()
-	logLevel := ""
 	switch level {
 	case hlog.LevelTrace, hlog.LevelDebug:
 		logger.Debugf(format, kvs...)
-		logLevel = "debug"
 	case hlog.LevelInfo:
 		logger.Infof(format, kvs...)
-		logLevel = "info"
 	case hlog.LevelNotice, hlog.LevelWarn:
 		logger.Warnf(format, kvs...)
-		logLevel = "warn"
 	case hlog.LevelError:
 		logger.Errorf(format, kvs...)
-		logLevel = "error"
 	case hlog.LevelFatal:
 		logger.Fatalf(format, kvs...)
-		logLevel = "fatal"
 	default:
 		logger.Warnf(format, kvs...)
-		logLevel = "warn"
 	}
-	l.sendToES(logLevel, nil, format, kvs...)
 }
 
 func (l *Logger) CtxLogf(level hlog.Level, ctx context.Context, format string, kvs ...interface{}) {
@@ -124,28 +115,20 @@ func (l *Logger) CtxLogf(level hlog.Level, ctx context.Context, format string, k
 			}
 		}
 	}
-	logLevel := ""
 	switch level {
 	case hlog.LevelDebug, hlog.LevelTrace:
 		log.Debugf(format, kvs...)
-		logLevel = "debug"
 	case hlog.LevelInfo:
 		log.Infof(format, kvs...)
-		logLevel = "info"
 	case hlog.LevelNotice, hlog.LevelWarn:
 		log.Warnf(format, kvs...)
-		logLevel = "warn"
 	case hlog.LevelError:
 		log.Errorf(format, kvs...)
-		logLevel = "error"
 	case hlog.LevelFatal:
 		log.Fatalf(format, kvs...)
-		logLevel = "fatal"
 	default:
 		log.Warnf(format, kvs...)
-		logLevel = "warn"
 	}
-	l.sendToES(logLevel, ctx, format, kvs...)
 }
 
 func (l *Logger) Trace(v ...interface{}) {
@@ -285,43 +268,6 @@ func (l *Logger) Logger() *zap.Logger {
 
 func (l *Logger) Sync() {
 	_ = l.l.Sync()
-}
-
-func (l *Logger) sendToES(level string, ctx context.Context, format string, v ...interface{}) {
-	if l.config.esClient == nil {
-		return
-	}
-	message := getMessage(format, v)
-
-	// 构建日志条目，包含 traceID 和调用信息
-	logEntry := map[string]interface{}{
-		"level":         level,
-		"message":       message,
-		"timestamp":     time.Now().Format(time.DateTime),
-		"application":   l.config.application,
-		"host.ip":       l.config.hostIp,
-		"log.file.path": l.config.logFilePath,
-	}
-	if ctx != nil {
-		if len(l.config.extraKeys) > 0 {
-			for _, k := range l.config.extraKeys {
-				if l.config.extraKeyAsStr {
-					logEntry[string(k)] = ctx.Value(string(k))
-				} else {
-					logEntry[string(k)] = ctx.Value(k)
-				}
-			}
-		}
-	}
-	// 发送日志到 Elasticsearch
-	_, err := l.config.esClient.Index().
-		Index(l.config.esIndex). // 替换为你需要的索引名
-		BodyJson(logEntry).
-		Do(context.Background())
-
-	if err != nil {
-		l.Error("Failed to send log to Elasticsearch", err)
-	}
 }
 
 func getMessage(template string, fmtArgs []interface{}) string {

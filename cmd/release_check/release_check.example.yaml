@@ -1,0 +1,34 @@
+# 发版自动化服务检测工具配置（compkg 通用，所有服务共享一份格式）
+# 用法: ./release_check -config release_check.yaml -since <发版时刻> [-commit <预期commit>]
+
+# Redis：须与各服务心跳上报的同一实例/库（health 心跳写在这里）
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+
+# health key 前缀，须与服务端 Reporter 一致（默认 compkg）
+prefix: "compkg"
+
+report:
+  output: "./release_report.md"   # 报告输出路径，留空则只打印到控制台
+
+defaults:
+  aliveWindow: "30s"              # 实例存活窗口：最近一次心跳在此窗口内视为活
+
+# 被检测服务清单：8 个服务全部基于 go+compkg，接入 redishealth.Start 后即可检测
+services:
+  - name: iot_cloud_platform_server   # 心跳 service 名，须与服务端 redishealth.Start 传入的一致
+    display: 管理后台服务
+    highRisk: true                    # 高危：检测失败 → 整体退出码非 0
+    expectCommit: auto                # auto=用 -commit 或本地 git；也可写死具体 commit
+    minInstances: 1                   # 期望最少存活实例数
+
+  # 其余服务接入心跳后逐个放开：
+  # - { name: s3_iot_server,          display: 三代工牌通讯服务, highRisk: true,  expectCommit: auto, minInstances: 2 }
+  # - { name: iot_server,             display: 四代工牌通讯服务, highRisk: true,  expectCommit: auto, minInstances: 2 }
+  # - { name: iot_upload_server,      display: 三代录音上传服务, highRisk: true,  expectCommit: auto, minInstances: 1 }
+  # - { name: audio_self_host,        display: 四代录音上传服务, highRisk: true,  expectCommit: auto, minInstances: 1 }
+  # - { name: upload_server_job,      display: 录音转码服务,     highRisk: false, expectCommit: auto, minInstances: 1 }
+  # - { name: iot_cloud_platform_open, display: 开放服务,        highRisk: true,  expectCommit: auto, minInstances: 1 }
+  # - { name: audio_transfer,         display: 录音播放服务,     highRisk: false, expectCommit: auto, minInstances: 1 }

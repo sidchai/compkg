@@ -2,7 +2,7 @@ package cache
 
 import (
 	"github.com/go-redis/redis/v8"
-	"github.com/sidchai/compkg/pkg/trace"
+	trace "github.com/sidchai/compkg/pkg/tracelegacy"
 )
 
 type redisOptions struct {

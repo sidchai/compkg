@@ -159,6 +159,19 @@ func (m *MinioX) GetObjectUrl(objectName string) (objectUrl string, err error) {
 	return objectUrl, nil
 }
 
+// DeleteObject
+//
+//	@Description: 根据完整外链 URL 删除对象
+//	@param fileUrl 完整外链（包含 scheme/host/bucket）
+//	@return error
+func (m *MinioX) DeleteObject(fileUrl string) error {
+	if m.client == nil {
+		return errors.New("miniox client is nil")
+	}
+	objectName := strings.ReplaceAll(fileUrl, fmt.Sprintf("%s://%s/%s/", m.client.EndpointURL().Scheme, m.client.EndpointURL().Host, m.BucketName), "")
+	return m.client.RemoveObject(m.ctx, m.BucketName, objectName, minio.RemoveObjectOptions{})
+}
+
 func (m *MinioX) GetPresignedURL(fileUrl string) (objectUrl string, err error) {
 	objectName := strings.ReplaceAll(fileUrl, fmt.Sprintf("%s://%s/%s/", m.client.EndpointURL().Scheme, m.client.EndpointURL().Host, m.BucketName), "")
 	return m.GetObjectUrl(objectName)

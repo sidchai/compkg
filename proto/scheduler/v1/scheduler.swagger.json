@@ -1,0 +1,4113 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "scheduler/v1/scheduler.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "WorkerService"
+    },
+    {
+      "name": "SchedulerService"
+    },
+    {
+      "name": "AppService"
+    },
+    {
+      "name": "AlertService"
+    },
+    {
+      "name": "UserService"
+    },
+    {
+      "name": "AuditService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/api/v1/alert/bindings": {
+      "get": {
+        "summary": "=== Job ↔ Rule ↔ Channel 绑定 ===",
+        "operationId": "AlertService_ListAlertBindings",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListAlertBindingsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "jobName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "ruleId",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "channelId",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      },
+      "post": {
+        "operationId": "AlertService_BindJobAlert",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1AlertBinding"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1BindJobAlertRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      }
+    },
+    "/api/v1/alert/bindings/{id}": {
+      "delete": {
+        "operationId": "AlertService_UnbindJobAlert",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UnbindJobAlertResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      }
+    },
+    "/api/v1/alert/channels": {
+      "get": {
+        "summary": "=== 通知渠道池 ===",
+        "operationId": "AlertService_ListAlertChannels",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListAlertChannelsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "channelType",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "ALERT_CHANNEL_UNSPECIFIED",
+              "ALERT_CHANNEL_FEISHU",
+              "ALERT_CHANNEL_DINGTALK",
+              "ALERT_CHANNEL_WECOM",
+              "ALERT_CHANNEL_EMAIL",
+              "ALERT_CHANNEL_WEBHOOK"
+            ],
+            "default": "ALERT_CHANNEL_UNSPECIFIED"
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      },
+      "post": {
+        "operationId": "AlertService_CreateAlertChannel",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1AlertChannel"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateAlertChannelRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      }
+    },
+    "/api/v1/alert/channels/{id}": {
+      "get": {
+        "operationId": "AlertService_GetAlertChannel",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1AlertChannel"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      },
+      "delete": {
+        "operationId": "AlertService_DeleteAlertChannel",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DeleteAlertChannelResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      },
+      "patch": {
+        "operationId": "AlertService_UpdateAlertChannel",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1AlertChannel"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AlertServiceUpdateAlertChannelBody"
+            }
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      }
+    },
+    "/api/v1/alert/channels/{id}:test": {
+      "post": {
+        "operationId": "AlertService_TestAlertChannel",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1TestAlertChannelResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AlertServiceTestAlertChannelBody"
+            }
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      }
+    },
+    "/api/v1/alert/events": {
+      "get": {
+        "summary": "=== 告警事件流水 ===",
+        "operationId": "AlertService_ListAlertEvents",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListAlertEventsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "jobName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      }
+    },
+    "/api/v1/alert/events/{id}:resolve": {
+      "post": {
+        "operationId": "AlertService_ResolveAlert",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ResolveAlertResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AlertServiceResolveAlertBody"
+            }
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      }
+    },
+    "/api/v1/alert/events/{id}:silence": {
+      "post": {
+        "operationId": "AlertService_SilenceAlert",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SilenceAlertResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AlertServiceSilenceAlertBody"
+            }
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      }
+    },
+    "/api/v1/alert/rules": {
+      "get": {
+        "summary": "=== 告警规则池 ===",
+        "operationId": "AlertService_ListAlertRules",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListAlertRulesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "enabledOnly",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      },
+      "post": {
+        "operationId": "AlertService_CreateAlertRule",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1AlertRule"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateAlertRuleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      }
+    },
+    "/api/v1/alert/rules/{id}": {
+      "get": {
+        "operationId": "AlertService_GetAlertRule",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1AlertRule"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      },
+      "delete": {
+        "operationId": "AlertService_DeleteAlertRule",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DeleteAlertRuleResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      }
+    },
+    "/api/v1/alert/rules/{rule.id}": {
+      "patch": {
+        "operationId": "AlertService_UpdateAlertRule",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1AlertRule"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "rule.id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AlertServiceUpdateAlertRuleBody"
+            }
+          }
+        ],
+        "tags": [
+          "AlertService"
+        ]
+      }
+    },
+    "/api/v1/apps": {
+      "get": {
+        "operationId": "AppService_ListApps",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListAppsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AppService"
+        ]
+      },
+      "post": {
+        "operationId": "AppService_CreateApp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateAppResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateAppRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AppService"
+        ]
+      }
+    },
+    "/api/v1/apps/{appName}": {
+      "get": {
+        "operationId": "AppService_GetApp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1App"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "appName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AppService"
+        ]
+      },
+      "delete": {
+        "operationId": "AppService_DeleteApp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DeleteAppResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "appName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AppService"
+        ]
+      },
+      "patch": {
+        "operationId": "AppService_UpdateApp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1App"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "appName",
+            "description": "不可改，作为 key",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AppServiceUpdateAppBody"
+            }
+          }
+        ],
+        "tags": [
+          "AppService"
+        ]
+      }
+    },
+    "/api/v1/apps/{appName}:disable": {
+      "post": {
+        "operationId": "AppService_DisableApp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1App"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "appName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AppServiceDisableAppBody"
+            }
+          }
+        ],
+        "tags": [
+          "AppService"
+        ]
+      }
+    },
+    "/api/v1/apps/{appName}:enable": {
+      "post": {
+        "summary": "EnableApp 重新启用应用（admin-only）。",
+        "operationId": "AppService_EnableApp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1App"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "appName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AppServiceEnableAppBody"
+            }
+          }
+        ],
+        "tags": [
+          "AppService"
+        ]
+      }
+    },
+    "/api/v1/apps/{appName}:resetSecret": {
+      "post": {
+        "operationId": "AppService_ResetAppSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ResetAppSecretResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "appName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AppServiceResetAppSecretBody"
+            }
+          }
+        ],
+        "tags": [
+          "AppService"
+        ]
+      }
+    },
+    "/api/v1/audit/logs": {
+      "get": {
+        "operationId": "AuditService_ListAuditLogs",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListAuditLogsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "actor",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "targetType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "targetLike",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "AuditService"
+        ]
+      }
+    },
+    "/api/v1/audit/logs/{id}": {
+      "get": {
+        "operationId": "AuditService_GetAuditLog",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1AuditLog"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "AuditService"
+        ]
+      }
+    },
+    "/api/v1/audit/logs:export": {
+      "post": {
+        "operationId": "AuditService_ExportAuditLogs",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ExportAuditLogsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ExportAuditLogsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AuditService"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "密码登录（用户名 + 密码 → JWT）。匿名可调用，不走 JWT 拦截器。",
+        "operationId": "UserService_PasswordLogin",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SsoLoginResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1PasswordLoginRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v1/auth/ssoLogin": {
+      "post": {
+        "summary": "SSO 登录回调（dev 模式：任意 username 通过；P1 接入飞书/钉钉）",
+        "operationId": "UserService_SsoLogin",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SsoLoginResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1SsoLoginRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "summary": "仪表盘",
+        "operationId": "SchedulerService_GetDashboard",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetDashboardResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "windowHours",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/jobs": {
+      "get": {
+        "summary": "任务管理",
+        "operationId": "SchedulerService_ListJobs",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListJobsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "appName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "triggerType",
+            "description": " - TRIGGER_TYPE_API: 业务方 SubmitTask 触发\n - TRIGGER_TYPE_MANUAL: UI 手动触发\n - TRIGGER_TYPE_RETRY: 重试触发",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "TRIGGER_TYPE_UNSPECIFIED",
+              "TRIGGER_TYPE_CRON",
+              "TRIGGER_TYPE_FIXED_RATE",
+              "TRIGGER_TYPE_ONE_TIME",
+              "TRIGGER_TYPE_API",
+              "TRIGGER_TYPE_MANUAL",
+              "TRIGGER_TYPE_RETRY",
+              "TRIGGER_TYPE_NONE"
+            ],
+            "default": "TRIGGER_TYPE_UNSPECIFIED"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "PRIORITY_UNSPECIFIED",
+              "PRIORITY_HIGH",
+              "PRIORITY_NORMAL",
+              "PRIORITY_LOW"
+            ],
+            "default": "PRIORITY_UNSPECIFIED"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      },
+      "post": {
+        "operationId": "SchedulerService_CreateJob",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Job"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateJobRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job.jobName}": {
+      "patch": {
+        "operationId": "SchedulerService_UpdateJob",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Job"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "job.jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SchedulerServiceUpdateJobBody"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/jobs/{jobName}": {
+      "get": {
+        "operationId": "SchedulerService_GetJob",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Job"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      },
+      "delete": {
+        "operationId": "SchedulerService_DeleteJob",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DeleteJobResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/jobs/{jobName}:pause": {
+      "post": {
+        "operationId": "SchedulerService_PauseJob",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Job"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SchedulerServicePauseJobBody"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/jobs/{jobName}:resume": {
+      "post": {
+        "operationId": "SchedulerService_ResumeJob",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Job"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SchedulerServiceResumeJobBody"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/jobs/{jobName}:trigger": {
+      "post": {
+        "operationId": "SchedulerService_TriggerJob",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1TriggerJobResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SchedulerServiceTriggerJobBody"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/pendingChanges": {
+      "get": {
+        "summary": "双人复核",
+        "operationId": "SchedulerService_ListPendingChanges",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListPendingChangesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/pendingChanges/{id}:approve": {
+      "post": {
+        "operationId": "SchedulerService_ApprovePendingChange",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ApprovePendingChangeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SchedulerServiceApprovePendingChangeBody"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/pendingChanges/{id}:reject": {
+      "post": {
+        "operationId": "SchedulerService_RejectPendingChange",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1RejectPendingChangeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SchedulerServiceRejectPendingChangeBody"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/runs": {
+      "get": {
+        "summary": "运行记录",
+        "operationId": "SchedulerService_ListRuns",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListRunsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "jobName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "appName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "description": " - RUN_STATUS_PENDING: 入队待派发\n - RUN_STATUS_DISPATCHING: 派发中（CAS 抢锁阶段）\n - RUN_STATUS_DISPATCHED: 已派发，未收到 ACK\n - RUN_STATUS_RUNNING: worker 上报开始执行\n - RUN_STATUS_TIMEOUT: worker 未在 timeout 内上报结果\n - RUN_STATUS_DEAD: 重试耗尽，进入死信\n - RUN_STATUS_CANCELED: 主动取消\n - RUN_STATUS_DISPATCH_FAIL: 派发失败（无 worker / 配额满 / max_inflight 满）",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "RUN_STATUS_UNSPECIFIED",
+              "RUN_STATUS_PENDING",
+              "RUN_STATUS_DISPATCHING",
+              "RUN_STATUS_DISPATCHED",
+              "RUN_STATUS_RUNNING",
+              "RUN_STATUS_SUCCESS",
+              "RUN_STATUS_FAILED",
+              "RUN_STATUS_TIMEOUT",
+              "RUN_STATUS_DEAD",
+              "RUN_STATUS_CANCELED",
+              "RUN_STATUS_DISPATCH_FAIL"
+            ],
+            "default": "RUN_STATUS_UNSPECIFIED"
+          },
+          {
+            "name": "bizKeyLike",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "workerId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "since",
+            "description": "时间戳秒",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/runs/{runId}": {
+      "get": {
+        "summary": "查询 run 状态",
+        "operationId": "SchedulerService_GetRun",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Run"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/runs/{runId}:cancel": {
+      "post": {
+        "summary": "取消未完成的 run",
+        "operationId": "SchedulerService_CancelRun",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CancelRunResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SchedulerServiceCancelRunBody"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/runs/{runId}:retry": {
+      "post": {
+        "operationId": "SchedulerService_RetryRun",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1RetryRunResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SchedulerServiceRetryRunBody"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/tasks:submit": {
+      "post": {
+        "summary": "提交一次 API 任务（trigger_type = api）\n注：业务方主线建议走 gRPC + HMAC；REST 端点仅供调试/低频场景",
+        "operationId": "SchedulerService_SubmitTask",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SubmitTaskResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1SubmitTaskRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "summary": "用户管理（仅 admin）",
+        "operationId": "UserService_ListUsers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListUsersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role",
+            "description": " - USER_ROLE_ADMIN: 完整管理权限（含 critical 改动复核）\n - USER_ROLE_OPERATOR: 触发/暂停/取消\n - USER_ROLE_VIEWER: 仅查看",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "USER_ROLE_UNSPECIFIED",
+              "USER_ROLE_ADMIN",
+              "USER_ROLE_OPERATOR",
+              "USER_ROLE_VIEWER"
+            ],
+            "default": "USER_ROLE_UNSPECIFIED"
+          },
+          {
+            "name": "enabledOnly",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      },
+      "post": {
+        "summary": "CreateUser admin 直接建账号：username + 初始密码 + 角色（替代 SSO 邀请）",
+        "operationId": "UserService_CreateUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1User"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateUserRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v1/users/me": {
+      "get": {
+        "summary": "当前会话用户",
+        "operationId": "UserService_GetCurrentUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1User"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v1/users/me:changePassword": {
+      "post": {
+        "summary": "当前会话用户改自己密码（需登录）",
+        "operationId": "UserService_ChangePassword",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ChangePasswordResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ChangePasswordRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v1/users/{id}:disable": {
+      "post": {
+        "operationId": "UserService_DisableUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DisableUserResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserServiceDisableUserBody"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v1/users/{id}:enable": {
+      "post": {
+        "summary": "EnableUser 重新启用账户（admin-only）。",
+        "operationId": "UserService_EnableUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1User"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserServiceEnableUserBody"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v1/users/{id}:resetPassword": {
+      "post": {
+        "summary": "ResetUserPassword admin 重置他人密码：传新密码 + must_change_on_next_login 标志",
+        "operationId": "UserService_ResetUserPassword",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ResetUserPasswordResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserServiceResetUserPasswordBody"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v1/users/{id}:updateRole": {
+      "post": {
+        "operationId": "UserService_UpdateUserRole",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1User"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserServiceUpdateUserRoleBody"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v1/users:invite": {
+      "post": {
+        "summary": "InviteUser 保留：兼容旧 SSO 邀请语义，不传密码",
+        "operationId": "UserService_InviteUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1User"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1InviteUserRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v1/workers": {
+      "get": {
+        "summary": "Worker 节点",
+        "operationId": "SchedulerService_ListWorkers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListWorkersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "appName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    },
+    "/api/v1/workers/{workerId}:kick": {
+      "post": {
+        "operationId": "SchedulerService_KickWorker",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1KickWorkerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "workerId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SchedulerServiceKickWorkerBody"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulerService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "AlertServiceResolveAlertBody": {
+      "type": "object",
+      "properties": {
+        "operator": {
+          "type": "string"
+        }
+      }
+    },
+    "AlertServiceSilenceAlertBody": {
+      "type": "object",
+      "properties": {
+        "durationSec": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "operator": {
+          "type": "string"
+        }
+      }
+    },
+    "AlertServiceTestAlertChannelBody": {
+      "type": "object",
+      "properties": {
+        "customMessage": {
+          "type": "string"
+        }
+      }
+    },
+    "AlertServiceUpdateAlertChannelBody": {
+      "type": "object",
+      "properties": {
+        "channelName": {
+          "type": "string"
+        },
+        "webhookUrl": {
+          "type": "string"
+        },
+        "secret": {
+          "type": "string",
+          "title": "空 = 不改"
+        },
+        "template": {
+          "type": "string"
+        },
+        "extraConfig": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "AlertServiceUpdateAlertRuleBody": {
+      "type": "object",
+      "properties": {
+        "rule": {
+          "type": "object",
+          "properties": {
+            "ruleName": {
+              "type": "string"
+            },
+            "conditionType": {
+              "$ref": "#/definitions/v1AlertConditionType"
+            },
+            "threshold": {
+              "type": "string"
+            },
+            "windowSeconds": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "silenceSeconds": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "escalateAfter": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "escalateTo": {
+              "type": "string",
+              "format": "int64",
+              "title": "channel id"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "createdBy": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "int64"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "int64"
+            },
+            "bindingCount": {
+              "type": "integer",
+              "format": "int32",
+              "title": "List 时填充：绑定的 Job 数"
+            }
+          },
+          "title": "----- AlertRule -----"
+        }
+      }
+    },
+    "AppServiceDisableAppBody": {
+      "type": "object"
+    },
+    "AppServiceEnableAppBody": {
+      "type": "object"
+    },
+    "AppServiceResetAppSecretBody": {
+      "type": "object",
+      "properties": {
+        "confirm": {
+          "type": "string"
+        }
+      }
+    },
+    "AppServiceUpdateAppBody": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "qpsQuota": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "payloadMaxBytes": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "webhookUrl": {
+          "type": "string"
+        }
+      }
+    },
+    "SchedulerServiceApprovePendingChangeBody": {
+      "type": "object",
+      "properties": {
+        "approver": {
+          "type": "string"
+        }
+      }
+    },
+    "SchedulerServiceCancelRunBody": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "SchedulerServiceKickWorkerBody": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "SchedulerServicePauseJobBody": {
+      "type": "object"
+    },
+    "SchedulerServiceRejectPendingChangeBody": {
+      "type": "object",
+      "properties": {
+        "approver": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "SchedulerServiceResumeJobBody": {
+      "type": "object"
+    },
+    "SchedulerServiceRetryRunBody": {
+      "type": "object"
+    },
+    "SchedulerServiceTriggerJobBody": {
+      "type": "object",
+      "properties": {
+        "bizKey": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "string",
+          "format": "byte"
+        },
+        "operator": {
+          "type": "string"
+        }
+      }
+    },
+    "SchedulerServiceUpdateJobBody": {
+      "type": "object",
+      "properties": {
+        "job": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "int64"
+            },
+            "appName": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "triggerType": {
+              "$ref": "#/definitions/v1TriggerType"
+            },
+            "cronExpr": {
+              "type": "string"
+            },
+            "fixedRateSeconds": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "oneTimeAt": {
+              "type": "string",
+              "format": "int64"
+            },
+            "timezone": {
+              "type": "string"
+            },
+            "misfirePolicy": {
+              "type": "string"
+            },
+            "executeMode": {
+              "$ref": "#/definitions/v1ExecuteMode"
+            },
+            "shardTotal": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "maxInflight": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "retryMax": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "retryBackoff": {
+              "type": "string",
+              "title": "JSON 数组字符串"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "status": {
+              "type": "string",
+              "title": "waiting_worker/ready/paused/disabled"
+            },
+            "priority": {
+              "$ref": "#/definitions/v1Priority"
+            },
+            "critical": {
+              "type": "boolean"
+            },
+            "createdBy": {
+              "type": "string"
+            },
+            "updatedBy": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "int64"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "int64"
+            },
+            "successRate30d": {
+              "type": "number",
+              "format": "double",
+              "description": "[0,1]",
+              "title": "关联信息（List 时填充）"
+            },
+            "nextRunAt": {
+              "type": "string",
+              "format": "int64",
+              "title": "仅 cron/fixed_rate"
+            }
+          },
+          "title": "----- Job CRUD -----"
+        },
+        "requireApproval": {
+          "type": "boolean",
+          "title": "服务端判断 critical 时强制 true，会进入 pending"
+        }
+      }
+    },
+    "UserServiceDisableUserBody": {
+      "type": "object"
+    },
+    "UserServiceEnableUserBody": {
+      "type": "object"
+    },
+    "UserServiceResetUserPasswordBody": {
+      "type": "object",
+      "properties": {
+        "newPassword": {
+          "type": "string"
+        },
+        "mustChangeOnNextLogin": {
+          "type": "boolean",
+          "title": "默认 true"
+        }
+      },
+      "title": "ResetUserPasswordRequest admin 重置他人密码。"
+    },
+    "UserServiceUpdateUserRoleBody": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "$ref": "#/definitions/v1UserRole"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1AlertBinding": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "jobName": {
+          "type": "string"
+        },
+        "ruleId": {
+          "type": "string",
+          "format": "int64"
+        },
+        "channelId": {
+          "type": "string",
+          "format": "int64"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "ruleName": {
+          "type": "string",
+          "title": "Join 字段（List 时填充）"
+        },
+        "channelName": {
+          "type": "string"
+        }
+      },
+      "title": "----- AlertBinding -----"
+    },
+    "v1AlertChannel": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "channelName": {
+          "type": "string"
+        },
+        "channelType": {
+          "$ref": "#/definitions/v1AlertChannelType"
+        },
+        "webhookUrl": {
+          "type": "string",
+          "title": "返回时尾 4 位脱敏（…a8f2）"
+        },
+        "template": {
+          "type": "string"
+        },
+        "extraConfig": {
+          "type": "string",
+          "title": "JSON"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "lastTestAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "lastTestOk": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      },
+      "title": "----- AlertChannel -----"
+    },
+    "v1AlertChannelType": {
+      "type": "string",
+      "enum": [
+        "ALERT_CHANNEL_UNSPECIFIED",
+        "ALERT_CHANNEL_FEISHU",
+        "ALERT_CHANNEL_DINGTALK",
+        "ALERT_CHANNEL_WECOM",
+        "ALERT_CHANNEL_EMAIL",
+        "ALERT_CHANNEL_WEBHOOK"
+      ],
+      "default": "ALERT_CHANNEL_UNSPECIFIED"
+    },
+    "v1AlertConditionType": {
+      "type": "string",
+      "enum": [
+        "ALERT_CONDITION_UNSPECIFIED",
+        "ALERT_CONDITION_CONSECUTIVE_FAIL",
+        "ALERT_CONDITION_TIMEOUT",
+        "ALERT_CONDITION_DISPATCH_FAIL",
+        "ALERT_CONDITION_SUCCESS_RATE_BELOW"
+      ],
+      "default": "ALERT_CONDITION_UNSPECIFIED",
+      "title": "- ALERT_CONDITION_CONSECUTIVE_FAIL: 连续失败 N 次\n - ALERT_CONDITION_TIMEOUT: 单次超时\n - ALERT_CONDITION_DISPATCH_FAIL: 派发失败\n - ALERT_CONDITION_SUCCESS_RATE_BELOW: 成功率 \u003c X%"
+    },
+    "v1AlertEvent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "eventKey": {
+          "type": "string"
+        },
+        "jobName": {
+          "type": "string"
+        },
+        "ruleId": {
+          "type": "string",
+          "format": "int64"
+        },
+        "channelId": {
+          "type": "string",
+          "format": "int64"
+        },
+        "severity": {
+          "$ref": "#/definitions/v1AlertSeverity"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "title": "firing/resolved/escalated/silenced"
+        },
+        "notifiedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "resolvedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "silenceUntil": {
+          "type": "string",
+          "format": "int64"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      },
+      "title": "----- AlertEvent -----"
+    },
+    "v1AlertRule": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "ruleName": {
+          "type": "string"
+        },
+        "conditionType": {
+          "$ref": "#/definitions/v1AlertConditionType"
+        },
+        "threshold": {
+          "type": "string"
+        },
+        "windowSeconds": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "silenceSeconds": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "escalateAfter": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "escalateTo": {
+          "type": "string",
+          "format": "int64",
+          "title": "channel id"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "bindingCount": {
+          "type": "integer",
+          "format": "int32",
+          "title": "List 时填充：绑定的 Job 数"
+        }
+      },
+      "title": "----- AlertRule -----"
+    },
+    "v1AlertSeverity": {
+      "type": "string",
+      "enum": [
+        "ALERT_SEVERITY_UNSPECIFIED",
+        "ALERT_SEVERITY_INFO",
+        "ALERT_SEVERITY_WARN",
+        "ALERT_SEVERITY_ERROR",
+        "ALERT_SEVERITY_CRITICAL"
+      ],
+      "default": "ALERT_SEVERITY_UNSPECIFIED"
+    },
+    "v1App": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "appName": {
+          "type": "string"
+        },
+        "appKey": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "qpsQuota": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "payloadMaxBytes": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "webhookUrl": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "onlineWorkers": {
+          "type": "integer",
+          "format": "int32",
+          "title": "List 时填充"
+        },
+        "totalWorkers": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "jobCount": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1ApprovePendingChangeResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "v1AuditLog": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "actor": {
+          "type": "string"
+        },
+        "actorIp": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string",
+          "description": "create/edit/delete/trigger/pause/..."
+        },
+        "targetType": {
+          "type": "string",
+          "title": "app/job/run/rule/channel/user"
+        },
+        "targetId": {
+          "type": "string"
+        },
+        "diff": {
+          "type": "string",
+          "title": "JSON"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1BindJobAlertRequest": {
+      "type": "object",
+      "properties": {
+        "jobName": {
+          "type": "string"
+        },
+        "ruleId": {
+          "type": "string",
+          "format": "int64"
+        },
+        "channelId": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1CancelRunResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "v1ChangePasswordRequest": {
+      "type": "object",
+      "properties": {
+        "oldPassword": {
+          "type": "string",
+          "title": "强制改密首登可留空"
+        },
+        "newPassword": {
+          "type": "string"
+        }
+      },
+      "title": "ChangePasswordRequest 当前用户改自己密码。"
+    },
+    "v1ChangePasswordResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1CreateAlertChannelRequest": {
+      "type": "object",
+      "properties": {
+        "channelName": {
+          "type": "string"
+        },
+        "channelType": {
+          "$ref": "#/definitions/v1AlertChannelType"
+        },
+        "webhookUrl": {
+          "type": "string"
+        },
+        "secret": {
+          "type": "string",
+          "title": "明文，服务端加密"
+        },
+        "template": {
+          "type": "string"
+        },
+        "extraConfig": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CreateAlertRuleRequest": {
+      "type": "object",
+      "properties": {
+        "rule": {
+          "$ref": "#/definitions/v1AlertRule"
+        }
+      }
+    },
+    "v1CreateAppRequest": {
+      "type": "object",
+      "properties": {
+        "appName": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "qpsQuota": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "payloadMaxBytes": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "webhookUrl": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CreateAppResponse": {
+      "type": "object",
+      "properties": {
+        "app": {
+          "$ref": "#/definitions/v1App"
+        },
+        "appSecret": {
+          "type": "string",
+          "title": "明文，仅返回一次"
+        }
+      }
+    },
+    "v1CreateJobRequest": {
+      "type": "object",
+      "properties": {
+        "job": {
+          "$ref": "#/definitions/v1Job"
+        }
+      }
+    },
+    "v1CreateUserRequest": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "title": "必填，[a-zA-Z0-9_.-]{3,64}"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string",
+          "title": "必填，8-72 字节（bcrypt 上限）"
+        },
+        "role": {
+          "$ref": "#/definitions/v1UserRole"
+        }
+      },
+      "title": "CreateUserRequest admin 直接建账号；password 必填，首次登录强制改密。"
+    },
+    "v1DeleteAlertChannelResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "v1DeleteAlertRuleResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "v1DeleteAppResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "v1DeleteJobResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "v1DisableUserResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "v1ExecuteMode": {
+      "type": "string",
+      "enum": [
+        "EXECUTE_MODE_UNSPECIFIED",
+        "EXECUTE_MODE_SINGLE",
+        "EXECUTE_MODE_SHARDING"
+      ],
+      "default": "EXECUTE_MODE_UNSPECIFIED",
+      "title": "- EXECUTE_MODE_SINGLE: 单机执行\n - EXECUTE_MODE_SHARDING: 分片执行"
+    },
+    "v1ExportAuditLogsRequest": {
+      "type": "object",
+      "properties": {
+        "filter": {
+          "$ref": "#/definitions/v1ListAuditLogsRequest"
+        },
+        "format": {
+          "type": "string",
+          "title": "csv / json"
+        }
+      }
+    },
+    "v1ExportAuditLogsResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "contentType": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        }
+      }
+    },
+    "v1GetDashboardResponse": {
+      "type": "object",
+      "properties": {
+        "totalJobs": {
+          "type": "string",
+          "format": "int64"
+        },
+        "todayRuns": {
+          "type": "string",
+          "format": "int64"
+        },
+        "todayFailed": {
+          "type": "string",
+          "format": "int64"
+        },
+        "onlineWorkers": {
+          "type": "string",
+          "format": "int64"
+        },
+        "totalWorkers": {
+          "type": "string",
+          "format": "int64"
+        },
+        "runsTrend": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1TimePoint"
+          },
+          "title": "时序点（按 1h 分桶）"
+        },
+        "failRateTrend": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1TimePoint"
+          }
+        },
+        "recentFailedTop": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1JobMetricRow"
+          },
+          "title": "Top 榜"
+        },
+        "dispatchFailedTop": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1JobMetricRow"
+          }
+        },
+        "inflightTop": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1JobMetricRow"
+          }
+        }
+      }
+    },
+    "v1InviteUserRequest": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "ssoProvider": {
+          "type": "string"
+        },
+        "ssoSubject": {
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/definitions/v1UserRole"
+        }
+      }
+    },
+    "v1Job": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "jobName": {
+          "type": "string"
+        },
+        "appName": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "triggerType": {
+          "$ref": "#/definitions/v1TriggerType"
+        },
+        "cronExpr": {
+          "type": "string"
+        },
+        "fixedRateSeconds": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "oneTimeAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "misfirePolicy": {
+          "type": "string"
+        },
+        "executeMode": {
+          "$ref": "#/definitions/v1ExecuteMode"
+        },
+        "shardTotal": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "maxInflight": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "retryMax": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "retryBackoff": {
+          "type": "string",
+          "title": "JSON 数组字符串"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "title": "waiting_worker/ready/paused/disabled"
+        },
+        "priority": {
+          "$ref": "#/definitions/v1Priority"
+        },
+        "critical": {
+          "type": "boolean"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "updatedBy": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "successRate30d": {
+          "type": "number",
+          "format": "double",
+          "description": "[0,1]",
+          "title": "关联信息（List 时填充）"
+        },
+        "nextRunAt": {
+          "type": "string",
+          "format": "int64",
+          "title": "仅 cron/fixed_rate"
+        }
+      },
+      "title": "----- Job CRUD -----"
+    },
+    "v1JobMetricRow": {
+      "type": "object",
+      "properties": {
+        "jobName": {
+          "type": "string"
+        },
+        "count": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1KickWorkerResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "v1ListAlertBindingsResponse": {
+      "type": "object",
+      "properties": {
+        "bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AlertBinding"
+          }
+        }
+      }
+    },
+    "v1ListAlertChannelsResponse": {
+      "type": "object",
+      "properties": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AlertChannel"
+          }
+        }
+      }
+    },
+    "v1ListAlertEventsResponse": {
+      "type": "object",
+      "properties": {
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AlertEvent"
+          }
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1ListAlertRulesResponse": {
+      "type": "object",
+      "properties": {
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AlertRule"
+          }
+        }
+      }
+    },
+    "v1ListAppsResponse": {
+      "type": "object",
+      "properties": {
+        "apps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1App"
+          }
+        }
+      }
+    },
+    "v1ListAuditLogsRequest": {
+      "type": "object",
+      "properties": {
+        "actor": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "targetType": {
+          "type": "string"
+        },
+        "targetLike": {
+          "type": "string"
+        },
+        "since": {
+          "type": "string",
+          "format": "int64"
+        },
+        "until": {
+          "type": "string",
+          "format": "int64"
+        },
+        "page": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "pageSize": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1ListAuditLogsResponse": {
+      "type": "object",
+      "properties": {
+        "logs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AuditLog"
+          }
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1ListJobsResponse": {
+      "type": "object",
+      "properties": {
+        "jobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Job"
+          }
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1ListPendingChangesResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1PendingChange"
+          }
+        }
+      }
+    },
+    "v1ListRunsResponse": {
+      "type": "object",
+      "properties": {
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Run"
+          }
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1ListUsersResponse": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1User"
+          }
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1ListWorkersResponse": {
+      "type": "object",
+      "properties": {
+        "workers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Worker"
+          }
+        }
+      }
+    },
+    "v1PasswordLoginRequest": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      },
+      "title": "PasswordLoginRequest 用户名 + 密码登录。"
+    },
+    "v1PendingChange": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "targetType": {
+          "type": "string"
+        },
+        "targetId": {
+          "type": "string"
+        },
+        "proposer": {
+          "type": "string"
+        },
+        "proposedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "changeDiff": {
+          "type": "string",
+          "title": "JSON"
+        },
+        "status": {
+          "type": "string"
+        },
+        "approver": {
+          "type": "string"
+        },
+        "approvedAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      },
+      "title": "----- 双人复核 -----"
+    },
+    "v1Priority": {
+      "type": "string",
+      "enum": [
+        "PRIORITY_UNSPECIFIED",
+        "PRIORITY_HIGH",
+        "PRIORITY_NORMAL",
+        "PRIORITY_LOW"
+      ],
+      "default": "PRIORITY_UNSPECIFIED"
+    },
+    "v1RejectPendingChangeResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "v1ResetAppSecretResponse": {
+      "type": "object",
+      "properties": {
+        "appSecret": {
+          "type": "string"
+        }
+      }
+    },
+    "v1ResetUserPasswordResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1ResolveAlertResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "v1RetryRunResponse": {
+      "type": "object",
+      "properties": {
+        "newRunId": {
+          "type": "string"
+        }
+      }
+    },
+    "v1Run": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "jobName": {
+          "type": "string"
+        },
+        "appName": {
+          "type": "string"
+        },
+        "bizKey": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "string",
+          "format": "byte"
+        },
+        "output": {
+          "type": "string",
+          "format": "byte"
+        },
+        "triggerType": {
+          "$ref": "#/definitions/v1TriggerType"
+        },
+        "triggerSource": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/v1RunStatus"
+        },
+        "error": {
+          "type": "string"
+        },
+        "durationMs": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "workerId": {
+          "type": "string"
+        },
+        "shardIndex": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "shardTotal": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "retryCount": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "parentRunId": {
+          "type": "string"
+        },
+        "nextRunAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "traceId": {
+          "type": "string"
+        },
+        "spanId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64",
+          "title": "秒"
+        },
+        "dispatchingAt": {
+          "type": "string",
+          "format": "int64",
+          "title": "毫秒，CAS 抢锁开始"
+        },
+        "dispatchedAt": {
+          "type": "string",
+          "format": "int64",
+          "title": "毫秒，派发到 worker"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "int64",
+          "title": "毫秒"
+        },
+        "endedAt": {
+          "type": "string",
+          "format": "int64",
+          "title": "毫秒"
+        }
+      },
+      "title": "----- Run -----"
+    },
+    "v1RunStatus": {
+      "type": "string",
+      "enum": [
+        "RUN_STATUS_UNSPECIFIED",
+        "RUN_STATUS_PENDING",
+        "RUN_STATUS_DISPATCHING",
+        "RUN_STATUS_DISPATCHED",
+        "RUN_STATUS_RUNNING",
+        "RUN_STATUS_SUCCESS",
+        "RUN_STATUS_FAILED",
+        "RUN_STATUS_TIMEOUT",
+        "RUN_STATUS_DEAD",
+        "RUN_STATUS_CANCELED",
+        "RUN_STATUS_DISPATCH_FAIL"
+      ],
+      "default": "RUN_STATUS_UNSPECIFIED",
+      "description": "- RUN_STATUS_PENDING: 入队待派发\n - RUN_STATUS_DISPATCHING: 派发中（CAS 抢锁阶段）\n - RUN_STATUS_DISPATCHED: 已派发，未收到 ACK\n - RUN_STATUS_RUNNING: worker 上报开始执行\n - RUN_STATUS_TIMEOUT: worker 未在 timeout 内上报结果\n - RUN_STATUS_DEAD: 重试耗尽，进入死信\n - RUN_STATUS_CANCELED: 主动取消\n - RUN_STATUS_DISPATCH_FAIL: 派发失败（无 worker / 配额满 / max_inflight 满）",
+      "title": "任务运行状态机"
+    },
+    "v1SilenceAlertResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "silenceUntil": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1SsoLoginRequest": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string",
+          "title": "SSO 回调 code"
+        },
+        "state": {
+          "type": "string"
+        }
+      }
+    },
+    "v1SsoLoginResponse": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/v1User"
+        },
+        "accessToken": {
+          "type": "string",
+          "title": "JWT"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1SubmitTaskRequest": {
+      "type": "object",
+      "properties": {
+        "appName": {
+          "type": "string"
+        },
+        "appKey": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "nonce": {
+          "type": "string"
+        },
+        "ts": {
+          "type": "string",
+          "format": "int64"
+        },
+        "jobName": {
+          "type": "string"
+        },
+        "bizKey": {
+          "type": "string",
+          "title": "幂等 key（同 biz_key 在 dedupe_window_sec 内只入队一次）"
+        },
+        "payload": {
+          "type": "string",
+          "format": "byte"
+        },
+        "dedupeWindowSec": {
+          "type": "integer",
+          "format": "int32",
+          "title": "0 = 不去重"
+        },
+        "traceId": {
+          "type": "string",
+          "title": "透传 trace context"
+        },
+        "spanId": {
+          "type": "string"
+        }
+      },
+      "title": "----- Submit -----"
+    },
+    "v1SubmitTaskResponse": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/v1RunStatus",
+          "title": "通常 PENDING"
+        },
+        "dedup": {
+          "type": "boolean",
+          "title": "true 表示命中去重，返回的是已存在 runId"
+        }
+      }
+    },
+    "v1TestAlertChannelResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        },
+        "latencyMs": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1TimePoint": {
+      "type": "object",
+      "properties": {
+        "ts": {
+          "type": "string",
+          "format": "int64"
+        },
+        "success": {
+          "type": "number",
+          "format": "double"
+        },
+        "failed": {
+          "type": "number",
+          "format": "double"
+        },
+        "rate": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "v1TriggerJobResponse": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        }
+      }
+    },
+    "v1TriggerType": {
+      "type": "string",
+      "enum": [
+        "TRIGGER_TYPE_UNSPECIFIED",
+        "TRIGGER_TYPE_CRON",
+        "TRIGGER_TYPE_FIXED_RATE",
+        "TRIGGER_TYPE_ONE_TIME",
+        "TRIGGER_TYPE_API",
+        "TRIGGER_TYPE_MANUAL",
+        "TRIGGER_TYPE_RETRY",
+        "TRIGGER_TYPE_NONE"
+      ],
+      "default": "TRIGGER_TYPE_UNSPECIFIED",
+      "title": "- TRIGGER_TYPE_API: 业务方 SubmitTask 触发\n - TRIGGER_TYPE_MANUAL: UI 手动触发\n - TRIGGER_TYPE_RETRY: 重试触发"
+    },
+    "v1UnbindJobAlertResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "v1User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "username": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "ssoProvider": {
+          "type": "string",
+          "description": "feishu/dingtalk/local/..."
+        },
+        "ssoSubject": {
+          "type": "string",
+          "title": "脱敏返回"
+        },
+        "role": {
+          "$ref": "#/definitions/v1UserRole"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "hasPassword": {
+          "type": "boolean",
+          "description": "是否已设置密码",
+          "title": "密码相关（用于 UI 区分 SSO-only 用户 vs 密码用户）"
+        },
+        "mustChangePassword": {
+          "type": "boolean",
+          "title": "admin 重置/初始建号后强制改密"
+        },
+        "passwordChangedAt": {
+          "type": "string",
+          "format": "int64",
+          "title": "上次改密时间（秒，0=从未改）"
+        }
+      }
+    },
+    "v1UserRole": {
+      "type": "string",
+      "enum": [
+        "USER_ROLE_UNSPECIFIED",
+        "USER_ROLE_ADMIN",
+        "USER_ROLE_OPERATOR",
+        "USER_ROLE_VIEWER"
+      ],
+      "default": "USER_ROLE_UNSPECIFIED",
+      "title": "- USER_ROLE_ADMIN: 完整管理权限（含 critical 改动复核）\n - USER_ROLE_OPERATOR: 触发/暂停/取消\n - USER_ROLE_VIEWER: 仅查看"
+    },
+    "v1Worker": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "workerId": {
+          "type": "string"
+        },
+        "appName": {
+          "type": "string"
+        },
+        "instanceId": {
+          "type": "string"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "sdkVersion": {
+          "type": "string"
+        },
+        "handlerJobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "inflight": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "loadAvg": {
+          "type": "number",
+          "format": "double"
+        },
+        "status": {
+          "type": "string",
+          "title": "online/draining/offline"
+        },
+        "connectedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "lastHeartbeat": {
+          "type": "string",
+          "format": "int64"
+        }
+      },
+      "title": "----- Worker -----"
+    }
+  }
+}
