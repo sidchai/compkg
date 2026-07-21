@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/sidchai/compkg/pkg/logger"
@@ -23,6 +24,7 @@ type VolcEngineTos struct {
 	objectKey       string
 	tosClient       *tos.ClientV2
 	IsCustomStorage bool
+	endpoint        string
 }
 
 func (v *VolcEngineTos) GetPresignedURL(path string) (string, error) {
@@ -47,10 +49,23 @@ func (v *VolcEngineTos) NewClient(ctx context.Context, opts ...upload.OssOption)
 	v.tosClient = tosClient
 	v.bucketName = po.BucketName
 	v.objectKey = po.ObjectKey
+	v.endpoint = po.Endpoint
 }
 
 func (v *VolcEngineTos) UploadFileLocal(fileName, fileLocalPath string) (string, error) {
-	tosPath := fmt.Sprintf("%s/%s/%s", v.objectKey, v.Catalogue, fileName)
+	tosPath := fmt.Sprintf("%s/%s", v.Catalogue, fileName)
+	var isObject bool
+	if v.objectKey != "" {
+		tosPath = fmt.Sprintf("%s/%s/%s", v.objectKey, v.Catalogue, fileName)
+		isObject = true
+	}
+	if v.IsTime {
+		if isObject {
+			tosPath = fmt.Sprintf("%s/%s/%s/%s", v.objectKey, v.Catalogue, time.Now().Format("2006/01/02"), fileName)
+		} else {
+			tosPath = fmt.Sprintf("%s/%s/%s", v.Catalogue, time.Now().Format("2006/01/02"), fileName)
+		}
+	}
 	if v.tosClient == nil {
 		return "", errors.New("tosClient is nil")
 	}
@@ -70,7 +85,7 @@ func (v *VolcEngineTos) UploadFileLocal(fileName, fileLocalPath string) (string,
 	})
 	v.ETag = output.ETag
 	v.FileSize = fileInfo.Size()
-	return fmt.Sprintf("voldtos://%s/%s", v.bucketName, tosPath), nil
+	return fmt.Sprintf("https://%s.%s/%s", v.bucketName, v.endpoint, tosPath), nil
 }
 
 func (v *VolcEngineTos) UploadFileIo(fileName string, content io.Reader) (string, error) {
@@ -90,7 +105,7 @@ func (v *VolcEngineTos) UploadFileIo(fileName string, content io.Reader) (string
 		return "", err
 	}
 
-	return fmt.Sprintf("voldtos://%s/%s", v.bucketName, tosPath), nil
+	return fmt.Sprintf("https://%s.%s/%s", v.bucketName, v.endpoint, tosPath), nil
 }
 
 func (v *VolcEngineTos) GetETag() string {

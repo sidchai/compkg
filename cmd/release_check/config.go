@@ -13,6 +13,7 @@ type CheckConfig struct {
 	Redis    RedisConf       `yaml:"redis"`    // Redis 连接（须与各服务心跳上报的同一实例/库）
 	Prefix   string          `yaml:"prefix"`   // health key 前缀，默认 compkg，须与 Reporter 一致
 	Report   ReportConf      `yaml:"report"`   // 报告输出配置
+	Notify   NotifyConf      `yaml:"notify"`   // 通知配置（钉钉/邮件）
 	Defaults DefaultsConf    `yaml:"defaults"` // 服务级默认值
 	Services []ServiceTarget `yaml:"services"` // 被检测服务清单
 }
@@ -24,9 +25,36 @@ type RedisConf struct {
 	Db       int    `yaml:"db"`
 }
 
-// ReportConf 报告输出。
+// ReportConf 报告输出：按天生成文件，自动清理过期报告。
 type ReportConf struct {
-	Output string `yaml:"output"` // Markdown 报告输出路径，空则只打印到 stdout
+	OutputDir string `yaml:"outputDir"` // 报告输出目录，空则只打印到 stdout
+	KeepDays  int    `yaml:"keepDays"`  // 报告保留天数，<=0 默认 1（只留当天）
+}
+
+// NotifyConf 通知配置。
+type NotifyConf struct {
+	DingTalk DingTalkConf `yaml:"dingtalk"` // 钉钉机器人
+	Email    EmailConf    `yaml:"email"`    // SMTP 邮件
+}
+
+// DingTalkConf 钉钉机器人通知配置。
+type DingTalkConf struct {
+	Enabled       bool   `yaml:"enabled"`       // 是否启用
+	Webhook       string `yaml:"webhook"`       // 机器人 webhook URL
+	Secret        string `yaml:"secret"`        // 加签密钥（可选）
+	OnlyOnFailure bool   `yaml:"onlyOnFailure"` // 仅检测失败时通知
+}
+
+// EmailConf SMTP 邮件通知配置。
+type EmailConf struct {
+	Enabled       bool     `yaml:"enabled"`       // 是否启用
+	SmtpHost      string   `yaml:"smtpHost"`      // SMTP 服务器地址
+	SmtpPort      int      `yaml:"smtpPort"`      // SMTP 端口（465=SSL, 587=STARTTLS）
+	Username      string   `yaml:"username"`      // 登录用户名
+	Password      string   `yaml:"password"`      // 登录密码/授权码
+	From          string   `yaml:"from"`          // 发件人地址
+	To            []string `yaml:"to"`            // 收件人列表
+	OnlyOnFailure bool     `yaml:"onlyOnFailure"` // 仅检测失败时通知
 }
 
 // DefaultsConf 服务级默认值，未在 service 内单独指定时回退到此。
@@ -36,7 +64,7 @@ type DefaultsConf struct {
 	aliveWindow time.Duration `yaml:"-"` // 解析后的存活窗口（内部使用）
 }
 
-// AliveWindow 返回解析后的存活窗口。
+// AliveWindowDuration 返回解析后的存活窗口。
 func (d DefaultsConf) AliveWindowDuration() time.Duration { return d.aliveWindow }
 
 // ServiceTarget 单个被检测服务。
@@ -72,6 +100,19 @@ func LoadConfig(path string) (*CheckConfig, error) {
 			return nil, fmt.Errorf("defaults.aliveWindow 格式错误 %q: %w", cfg.Defaults.AliveWindow, err)
 		}
 		cfg.Defaults.aliveWindow = d
+	}
+	if cfg.Report.KeepDays <= 0 {
+		cfg.Report.KeepDays = 1 // 默认只留当天
+	}
+	// 通知配置校验：启用了才校验必填项，避免没用到的渠道阻断启动。
+	if cfg.Notify.DingTalk.Enabled && cfg.Notify.DingTalk.Webhook == "" {
+		return nil, fmt.Errorf("notify.dingtalk.enabled=true 但 webhook 为空")
+	}
+	if cfg.Notify.Email.Enabled {
+		e := cfg.Notify.Email
+		if e.SmtpHost == "" || e.SmtpPort == 0 || e.From == "" || len(e.To) == 0 {
+			return nil, fmt.Errorf("notify.email.enabled=true 但 smtpHost/smtpPort/from/to 配置不完整")
+		}
 	}
 	if len(cfg.Services) == 0 {
 		return nil, fmt.Errorf("services 不能为空")

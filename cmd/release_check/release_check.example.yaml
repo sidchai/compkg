@@ -10,8 +10,28 @@ redis:
 # health key 前缀，须与服务端 Reporter 一致（默认 compkg）
 prefix: "compkg"
 
+# 报告：按天留存，自动清理过期文件
 report:
-  output: "./release_report.md"   # 报告输出路径，留空则只打印到控制台
+  outputDir: "./reports"          # 报告输出目录，留空则只打印到控制台
+  keepDays: 1                     # 报告保留天数，1=只留当天；文件名含时分秒，支持一天多次发版
+
+# 通知：钉钉 + 邮件，均可独立开关
+notify:
+  dingtalk:
+    enabled: false                # 是否启用钉钉通知
+    webhook: "https://oapi.dingtalk.com/robot/send?access_token=xxx"
+    secret: ""                    # 加签密钥（机器人安全设置选"加签"时填）
+    onlyOnFailure: false          # true=仅检测失败时推送；false=每次都推送
+  email:
+    enabled: false                # 是否启用邮件通知
+    smtpHost: "smtp.exmail.qq.com"
+    smtpPort: 465                 # 465=SSL（推荐），587=STARTTLS
+    username: "deploy@example.com"
+    password: "授权码或密码"
+    from: "deploy@example.com"
+    to:                           # 收件人列表
+      - "ops@example.com"
+    onlyOnFailure: true           # 邮件建议仅失败时发，避免打扰
 
 defaults:
   aliveWindow: "30s"              # 实例存活窗口：最近一次心跳在此窗口内视为活
@@ -24,11 +44,10 @@ services:
     expectCommit: auto                # auto=用 -commit 或本地 git；也可写死具体 commit
     minInstances: 1                   # 期望最少存活实例数
 
-  # 其余服务接入心跳后逐个放开：
-  # - { name: s3_iot_server,          display: 三代工牌通讯服务, highRisk: true,  expectCommit: auto, minInstances: 2 }
-  # - { name: iot_server,             display: 四代工牌通讯服务, highRisk: true,  expectCommit: auto, minInstances: 2 }
-  # - { name: iot_upload_server,      display: 三代录音上传服务, highRisk: true,  expectCommit: auto, minInstances: 1 }
-  # - { name: audio_self_host,        display: 四代录音上传服务, highRisk: true,  expectCommit: auto, minInstances: 1 }
-  # - { name: upload_server_job,      display: 录音转码服务,     highRisk: false, expectCommit: auto, minInstances: 1 }
-  # - { name: iot_cloud_platform_open, display: 开放服务,        highRisk: true,  expectCommit: auto, minInstances: 1 }
-  # - { name: audio_transfer,         display: 录音播放服务,     highRisk: false, expectCommit: auto, minInstances: 1 }
+  - { name: s3_iot_server,           display: 三代工牌通讯服务, highRisk: true,  expectCommit: auto, minInstances: 2 }
+  - { name: iot_server,              display: 四代工牌通讯服务, highRisk: true,  expectCommit: auto, minInstances: 2 }
+  - { name: iot_upload_server,       display: 三代录音上传服务, highRisk: true,  expectCommit: auto, minInstances: 1 }
+  - { name: audio_self_host,         display: 四代录音上传服务, highRisk: true,  expectCommit: auto, minInstances: 1 }
+  - { name: upload_server_job,       display: 录音转码服务,     highRisk: false, expectCommit: auto, minInstances: 1 }
+  - { name: iot_cloud_platform_open, display: 开放服务,         highRisk: true,  expectCommit: auto, minInstances: 1 }
+  - { name: audio_transfer,          display: 录音播放服务,     highRisk: false, expectCommit: auto, minInstances: 1 }
