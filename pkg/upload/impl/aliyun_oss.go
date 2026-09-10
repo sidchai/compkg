@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -15,6 +16,9 @@ import (
 	"github.com/sidchai/compkg/pkg/upload"
 	"github.com/sidchai/compkg/pkg/util"
 )
+
+// 同一 endpoint+ak+bucket 复用 Client，否则每条上传都新建连接池，100 并发会打满握手而不是打满带宽
+var aliyunBucketCache sync.Map
 
 type AliyunOss struct {
 	ETag            string
@@ -68,15 +72,27 @@ func (a *AliyunOss) UploadFileLocal(fileName, fileLocalPath string) (string, err
 	if a.IsCustomStorage {
 		ossPath = strings.ReplaceAll(fileName, fmt.Sprintf("https://%s.%s/", a.bucketName, a.endpoint), "")
 	}
-	if err := a.ossBucket.PutObjectFromFile(ossPath, fileLocalPath); err != nil {
-		logger.Errorf("AliyunOss UploadFileLocal PutObjectFromFile err:%+v", err.Error())
+	fd, err := os.Open(fileLocalPath)
+	if err != nil {
 		return "", err
 	}
-	fileMd5, fileSize, err := util.CalculateMD5(fileLocalPath)
-	if err == nil {
-		a.ETag = fileMd5
-		a.FileSize = fileSize
+	defer fd.Close()
+	fi, err := fd.Stat()
+	if err != nil {
+		return "", err
 	}
+	a.FileSize = fi.Size()
+	// 用 Put 响应头里的 ETag（简单上传即为文件 MD5），避免上传后再整文件读一遍算哈希
+	resp, err := a.ossBucket.DoPutObject(&oss.PutObjectRequest{ObjectKey: ossPath, Reader: fd}, nil)
+	if err != nil {
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
+		logger.Errorf("AliyunOss UploadFileLocal PutObject err:%+v", err.Error())
+		return "", err
+	}
+	defer resp.Body.Close()
+	a.ETag = strings.Trim(resp.Headers.Get("ETag"), `"`)
 	return fmt.Sprintf("https://%s.%s/%s", a.bucketName, a.endpoint, ossPath), nil
 }
 
@@ -188,17 +204,22 @@ func (a *AliyunOss) SetTagging(path string, tags map[string]string) error {
 }
 
 func NewBucket(endpoint, accessKeyId, accessKeySecret, bucketName string) (*oss.Bucket, error) {
-	client, err := oss.New(endpoint, accessKeyId, accessKeySecret)
+	cacheKey := endpoint + "\x00" + accessKeyId + "\x00" + bucketName
+	if cached, ok := aliyunBucketCache.Load(cacheKey); ok {
+		return cached.(*oss.Bucket), nil
+	}
+	// MaxConns 必须盖过转存并发，否则连接排队会表现为“上传很慢”
+	client, err := oss.New(endpoint, accessKeyId, accessKeySecret, oss.MaxConns(512, 256, 256))
 	if err != nil {
 		hlog.Errorf("AliyunOss NewBucket err:%+v", err.Error())
 		return nil, err
 	}
 	logger.Infof("bucketName:%s", bucketName)
-	// 判断桶是否存在，不存在则创建
 	bucket, err := client.Bucket(bucketName)
 	if err != nil {
 		logger.Errorf("AliyunOss get Bucket err:%+v", err.Error())
 		return nil, err
 	}
-	return bucket, nil
+	actual, _ := aliyunBucketCache.LoadOrStore(cacheKey, bucket)
+	return actual.(*oss.Bucket), nil
 }

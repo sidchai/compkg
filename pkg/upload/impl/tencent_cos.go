@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sidchai/compkg/pkg/logger"
@@ -15,6 +17,8 @@ import (
 	"github.com/sidchai/compkg/pkg/util"
 	"github.com/tencentyun/cos-go-sdk-v5"
 )
+
+var tencentClientCache sync.Map
 
 type TencentCos struct {
 	ETag            string
@@ -218,13 +222,31 @@ func (t *TencentCos) Delete(path string) error {
 }
 
 func NewClient(cosUrl, secretId, secretKey string) *cos.Client {
+	cacheKey := cosUrl + "\x00" + secretId
+	if cached, ok := tencentClientCache.Load(cacheKey); ok {
+		return cached.(*cos.Client)
+	}
 	urlStr, _ := url.Parse(cosUrl)
 	baseURL := &cos.BaseURL{BucketURL: urlStr}
 	client := cos.NewClient(baseURL, &http.Client{
+		Timeout: 10 * time.Minute,
 		Transport: &cos.AuthorizationTransport{
 			SecretID:  secretId,
 			SecretKey: secretKey,
+			Transport: &http.Transport{
+				Proxy: http.ProxyFromEnvironment,
+				DialContext: (&net.Dialer{
+					Timeout:   10 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				MaxIdleConns:          256,
+				MaxIdleConnsPerHost:   128,
+				IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ResponseHeaderTimeout: 60 * time.Second,
+			},
 		},
 	})
-	return client
+	actual, _ := tencentClientCache.LoadOrStore(cacheKey, client)
+	return actual.(*cos.Client)
 }

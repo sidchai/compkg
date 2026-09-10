@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -222,12 +223,18 @@ func (j *JDCloudOss) Download(fileUrl, fileName, dataFolder string) error {
 	return nil
 }
 
-// GetPresignedURL 生成对象的预签名 GET 链接
+// GetPresignedURL 生成对象的预签名 GET 链接。
+// path 可为完整 URL 或 object key；完整 URL 时兼容内网/外网 host（s3 / s3-internal）剥离 key。
+// 重要：object key 必须是真实 UTF-8 路径（如「录音记录.xlsx」），不能带 %E5%BD%95。
+// 否则 SDK 会对已编码串再编码成 %25E5…，京东云会 NoSuchKey。
 func (j *JDCloudOss) GetPresignedURL(path string) (string, error) {
 	if j.s3Client == nil {
 		return "", errors.New("s3Client is nil")
 	}
-	objectKey := strings.ReplaceAll(path, fmt.Sprintf("https://%s.%s/", j.bucketName, j.endpoint), "")
+	objectKey := j.objectKeyFromURL(path)
+	if objectKey == "" {
+		return "", errors.New("object key is empty")
+	}
 	expires := j.expires
 	if expires <= 0 {
 		expires = 3600
@@ -238,10 +245,91 @@ func (j *JDCloudOss) GetPresignedURL(path string) (string, error) {
 	})
 	signedURL, err := req.Presign(time.Duration(expires) * time.Second)
 	if err != nil {
-		logger.Errorf("JDCloudOss GetPresignedURL Presign err:%+v", err.Error())
+		logger.Errorf("JDCloudOss GetPresignedURL Presign err:%+v key=%s", err.Error(), objectKey)
 		return "", err
 	}
 	return signedURL, nil
+}
+
+// objectKeyFromURL 从完整 OSS URL 或裸 key 得到 object key（UTF-8，已 PathUnescape）。
+// 兼容 https://{bucket}.s3.xxx / https://{bucket}.s3-internal.xxx 及 http 变体。
+func (j *JDCloudOss) objectKeyFromURL(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return path
+	}
+	// 去掉 query（预签名 URL 再签时不应把签名参数当 key）
+	if q := strings.Index(path, "?"); q >= 0 {
+		path = path[:q]
+	}
+	// 已是 key（无 scheme）
+	if !strings.Contains(path, "://") {
+		return unescapeOSSObjectKey(strings.TrimPrefix(path, "/"))
+	}
+	// 按当前 endpoint 剥离
+	for _, scheme := range []string{"https://", "http://"} {
+		prefix := fmt.Sprintf("%s%s.%s/", scheme, j.bucketName, j.endpoint)
+		if strings.HasPrefix(path, prefix) {
+			return unescapeOSSObjectKey(strings.TrimPrefix(path, prefix))
+		}
+	}
+	// 内网/外网域名互换再试（s3 <-> s3-internal）
+	altEndpoint := jdcloudAltEndpoint(j.endpoint)
+	if altEndpoint != "" && altEndpoint != j.endpoint {
+		for _, scheme := range []string{"https://", "http://"} {
+			prefix := fmt.Sprintf("%s%s.%s/", scheme, j.bucketName, altEndpoint)
+			if strings.HasPrefix(path, prefix) {
+				return unescapeOSSObjectKey(strings.TrimPrefix(path, prefix))
+			}
+		}
+	}
+	// 兜底：解析 URL path（优先 RawPath，避免解析器与编码混用）
+	if u, err := url.Parse(path); err == nil {
+		raw := u.EscapedPath()
+		if raw == "" {
+			raw = u.Path
+		}
+		return unescapeOSSObjectKey(strings.TrimPrefix(raw, "/"))
+	}
+	if i := strings.Index(path, "://"); i >= 0 {
+		rest := path[i+3:]
+		if slash := strings.Index(rest, "/"); slash >= 0 {
+			return unescapeOSSObjectKey(strings.TrimPrefix(rest[slash:], "/"))
+		}
+	}
+	return unescapeOSSObjectKey(path)
+}
+
+// unescapeOSSObjectKey 将 URL 编码的 object key 还原为上传时的真实 key。
+// 最多解两轮，兼容「入库已编码 / 改写 host 后再编码」导致的双重 % 编码。
+func unescapeOSSObjectKey(key string) string {
+	key = strings.TrimPrefix(key, "/")
+	if key == "" {
+		return key
+	}
+	for i := 0; i < 2; i++ {
+		if !strings.Contains(key, "%") {
+			break
+		}
+		decoded, err := url.PathUnescape(key)
+		if err != nil || decoded == key {
+			break
+		}
+		key = decoded
+	}
+	return key
+}
+
+// jdcloudAltEndpoint 京东云公网/内网 endpoint 互转：s3.x ↔ s3-internal.x
+func jdcloudAltEndpoint(endpoint string) string {
+	endpoint = strings.TrimSpace(endpoint)
+	if strings.HasPrefix(endpoint, "s3-internal.") {
+		return "s3." + strings.TrimPrefix(endpoint, "s3-internal.")
+	}
+	if strings.HasPrefix(endpoint, "s3.") {
+		return "s3-internal." + strings.TrimPrefix(endpoint, "s3.")
+	}
+	return ""
 }
 
 // PutACL 京东云 OSS 暂未实现 ACL 设置（保留接口兼容）
@@ -260,12 +348,12 @@ func (j *JDCloudOss) CopySelf(path string, storageClass string) error {
 }
 
 // Delete 删除京东云 OSS 对象
-// path 为完整外链 URL，需先剥离 https://{bucket}.{endpoint}/ 前缀得到 objectKey
+// path 为完整外链 URL 或 object key
 func (j *JDCloudOss) Delete(path string) error {
 	if j.s3Client == nil {
 		return errors.New("s3Client is nil")
 	}
-	objectKey := strings.ReplaceAll(path, fmt.Sprintf("https://%s.%s/", j.bucketName, j.endpoint), "")
+	objectKey := j.objectKeyFromURL(path)
 	if _, err := j.s3Client.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String(j.bucketName),
 		Key:    aws.String(objectKey),

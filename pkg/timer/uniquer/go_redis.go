@@ -15,20 +15,24 @@ type uniqueGoRedis struct {
 
 var expireSecond = 15 * time.Second
 
+// ErrUniqueLimitHeld SetNX 未抢到锁。timer.SetLimit 失败时 timerAction 会跳过本轮。
+var ErrUniqueLimitHeld = errors.New("unique limit held")
+
 func NewUniqueGoRedis(ctx context.Context, redis *redis.Client) *uniqueGoRedis {
 	return &uniqueGoRedis{redis, ctx}
 }
 
 func (u *uniqueGoRedis) SetLimit(key, value string) error {
-
-	err := u.Redis.SetNX(u.Ctx, key, value, expireSecond).Err()
+	// 必须看 bool：key 已存在时 SetNX 返回 false, nil，只判断 error 会导致多实例同时执行。
+	ok, err := u.Redis.SetNX(u.Ctx, key, value, expireSecond).Result()
 	if err != nil {
 		fmt.Println("redis setNx fail, err: ", err)
 		return err
 	}
-
+	if !ok {
+		return ErrUniqueLimitHeld
+	}
 	return nil
-
 }
 
 func (u *uniqueGoRedis) DeleteLimit(key, value string) error {

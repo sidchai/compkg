@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/common/hlog"
@@ -14,6 +15,9 @@ import (
 	"github.com/sidchai/compkg/pkg/upload"
 	"github.com/volcengine/ve-tos-golang-sdk/v2/tos"
 )
+
+// 同一 endpoint+ak+region 复用 Client，避免每条上传新建连接池
+var volcClientCache sync.Map
 
 type VolcEngineTos struct {
 	ETag            string
@@ -75,7 +79,11 @@ func (v *VolcEngineTos) UploadFileLocal(fileName, fileLocalPath string) (string,
 		return "", err
 	}
 	defer f.Close()
-	fileInfo, _ := f.Stat()
+	fileInfo, err := f.Stat()
+	if err != nil {
+		return "", err
+	}
+	v.FileSize = fileInfo.Size()
 	output, err := v.tosClient.PutObjectV2(context.Background(), &tos.PutObjectV2Input{
 		PutObjectBasicInput: tos.PutObjectBasicInput{
 			Bucket: v.bucketName,
@@ -83,8 +91,11 @@ func (v *VolcEngineTos) UploadFileLocal(fileName, fileLocalPath string) (string,
 		},
 		Content: f,
 	})
-	v.ETag = output.ETag
-	v.FileSize = fileInfo.Size()
+	if err != nil {
+		logger.Errorf("VolcEnginTos UploadFileLocal PutObjectV2 err:%+v", err.Error())
+		return "", err
+	}
+	v.ETag = strings.Trim(output.ETag, `"`)
 	return fmt.Sprintf("https://%s.%s/%s", v.bucketName, v.endpoint, tosPath), nil
 }
 
@@ -163,10 +174,20 @@ func (v *VolcEngineTos) Delete(path string) error {
 }
 
 func NewClientV2(endpoint, accessKey, secretKey, region string) (*tos.ClientV2, error) {
-	tosClient, err := tos.NewClientV2(endpoint, tos.WithRegion(region), tos.WithCredentials(tos.NewStaticCredentials(accessKey, secretKey)))
+	cacheKey := endpoint + "\x00" + accessKey + "\x00" + region
+	if cached, ok := volcClientCache.Load(cacheKey); ok {
+		return cached.(*tos.ClientV2), nil
+	}
+	tosClient, err := tos.NewClientV2(endpoint,
+		tos.WithRegion(region),
+		tos.WithCredentials(tos.NewStaticCredentials(accessKey, secretKey)),
+		tos.WithMaxConnections(256),
+		tos.WithIdleConnTimeout(90*time.Second),
+	)
 	if err != nil {
 		hlog.Errorf("VolcEngineTos NewClientV2 err:%+v", err.Error())
 		return nil, err
 	}
-	return tosClient, nil
+	actual, _ := volcClientCache.LoadOrStore(cacheKey, tosClient)
+	return actual.(*tos.ClientV2), nil
 }
