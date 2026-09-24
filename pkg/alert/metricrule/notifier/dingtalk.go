@@ -12,8 +12,10 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/sidchai/compkg/pkg/alert"
+	"github.com/sidchai/compkg/pkg/alert/metricrule"
 )
+
+var _ metricrule.Notifier = (*DingTalkNotifier)(nil)
 
 // DingTalkOption 钉钉通知选项
 type DingTalkOption func(*DingTalkNotifier)
@@ -33,7 +35,7 @@ func WithTimeout(timeout time.Duration) DingTalkOption {
 }
 
 // WithConfigProvider 设置配置提供者（支持热更新 Webhook URL）
-func WithConfigProvider(p alert.ConfigProvider) DingTalkOption {
+func WithConfigProvider(p metricrule.ConfigProvider) DingTalkOption {
 	return func(d *DingTalkNotifier) {
 		d.configProvider = p
 	}
@@ -44,7 +46,7 @@ type DingTalkNotifier struct {
 	webhookURL     string
 	secret         string
 	client         *http.Client
-	configProvider alert.ConfigProvider
+	configProvider metricrule.ConfigProvider
 }
 
 // NewDingTalk 创建钉钉通知器
@@ -60,7 +62,7 @@ func NewDingTalk(webhookURL string, opts ...DingTalkOption) *DingTalkNotifier {
 }
 
 // Send 发送告警通知
-func (d *DingTalkNotifier) Send(event alert.AlertEvent) error {
+func (d *DingTalkNotifier) Send(event metricrule.AlertEvent) error {
 	webhookURL, secret := d.getConfig()
 	if webhookURL == "" {
 		return fmt.Errorf("dingtalk webhook url is empty")
@@ -123,7 +125,7 @@ func (d *DingTalkNotifier) signURL(webhookURL, secret string) string {
 	return fmt.Sprintf("%s&timestamp=%d&sign=%s", webhookURL, timestamp, sign)
 }
 
-func (d *DingTalkNotifier) buildMarkdownBody(event alert.AlertEvent) map[string]interface{} {
+func (d *DingTalkNotifier) buildMarkdownBody(event metricrule.AlertEvent) map[string]interface{} {
 	title := fmt.Sprintf("%s %s告警 - %s", event.Level.Emoji(), event.Level.Text(), event.ServiceName)
 	text := fmt.Sprintf(
 		"### %s %s告警：%s\n\n"+

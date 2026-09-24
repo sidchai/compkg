@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 	"time"
 
@@ -144,19 +145,18 @@ func (m *MinioX) GetObject(fileUrl string) *minio.Object {
 	return object
 }
 
-// GetObjectUrl
-//
-//	@Description: 获取文件临时访问路径
-//	@return err
-//	@return objectUrl
+// GetObjectUrl 按「目录 Module + 文件名」生成预签名 GET 链接。
+// 必须返回 u.String()：签名在 query（X-Amz-*），只拼 Path 会丢掉凭证。
 func (m *MinioX) GetObjectUrl(objectName string) (objectUrl string, err error) {
-	u, err := m.client.PresignedGetObject(m.ctx, m.BucketName, m.Module+objectName, time.Duration(m.Expires)*time.Second, nil)
+	if m.client == nil {
+		return "", errors.New("miniox client is nil")
+	}
+	u, err := m.client.PresignedGetObject(m.ctx, m.BucketName, m.Module+objectName, m.presignExpires(), nil)
 	if err != nil {
 		logger.Errorf("miniox GetObjectUrl err:%v", err)
 		return "", err
 	}
-	objectUrl = fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, u.Path)
-	return objectUrl, nil
+	return u.String(), nil
 }
 
 // DeleteObject
@@ -172,7 +172,77 @@ func (m *MinioX) DeleteObject(fileUrl string) error {
 	return m.client.RemoveObject(m.ctx, m.BucketName, objectName, minio.RemoveObjectOptions{})
 }
 
+// GetPresignedURL 根据完整外链或裸 object key 生成预签名 GET 链接。
+// 不能走 GetObjectUrl：后者会再拼 Module，完整 URL 剥出的 key 已含目录。
 func (m *MinioX) GetPresignedURL(fileUrl string) (objectUrl string, err error) {
-	objectName := strings.ReplaceAll(fileUrl, fmt.Sprintf("%s://%s/%s/", m.client.EndpointURL().Scheme, m.client.EndpointURL().Host, m.BucketName), "")
-	return m.GetObjectUrl(objectName)
+	if m.client == nil {
+		return "", errors.New("miniox client is nil")
+	}
+	objectName := m.objectNameFromURL(fileUrl)
+	if objectName == "" {
+		return "", errors.New("object key is empty")
+	}
+	u, err := m.client.PresignedGetObject(m.ctx, m.BucketName, objectName, m.presignExpires(), nil)
+	if err != nil {
+		logger.Errorf("miniox GetPresignedURL err:%v", err)
+		return "", err
+	}
+	return u.String(), nil
+}
+
+// presignExpires minio-go 要求 expires > 0，未配置时与其它 OSS 实现一致兜底 3600s。
+func (m *MinioX) presignExpires() time.Duration {
+	expires := m.Expires
+	if expires <= 0 {
+		expires = 3600
+	}
+	return time.Duration(expires) * time.Second
+}
+
+// objectNameFromURL 从完整外链或裸 key 得到真实 object key（UTF-8，已 PathUnescape）。
+// 兼容 path-style（/{bucket}/{key}）与虚拟主机风格（/{key}），并丢掉已有签名 query。
+func (m *MinioX) objectNameFromURL(fileUrl string) string {
+	fileUrl = strings.TrimSpace(fileUrl)
+	if fileUrl == "" {
+		return ""
+	}
+	if q := strings.Index(fileUrl, "?"); q >= 0 {
+		fileUrl = fileUrl[:q]
+	}
+	if !strings.Contains(fileUrl, "://") {
+		return unescapeMinioObjectKey(strings.TrimPrefix(fileUrl, "/"))
+	}
+	u, err := url.Parse(fileUrl)
+	if err != nil {
+		return unescapeMinioObjectKey(fileUrl)
+	}
+	path := u.EscapedPath()
+	if path == "" {
+		path = u.Path
+	}
+	path = strings.TrimPrefix(path, "/")
+	if m.BucketName != "" && strings.HasPrefix(path, m.BucketName+"/") {
+		path = strings.TrimPrefix(path, m.BucketName+"/")
+	}
+	return unescapeMinioObjectKey(path)
+}
+
+// unescapeMinioObjectKey 将 URL 编码的 object key 还原为上传时的真实 key。
+// 最多解两轮，避免对已编码中文 key 再签一次变成 %25xx。
+func unescapeMinioObjectKey(key string) string {
+	key = strings.TrimPrefix(key, "/")
+	if key == "" {
+		return key
+	}
+	for i := 0; i < 2; i++ {
+		if !strings.Contains(key, "%") {
+			break
+		}
+		decoded, err := url.PathUnescape(key)
+		if err != nil || decoded == key {
+			break
+		}
+		key = decoded
+	}
+	return key
 }

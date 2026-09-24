@@ -25,6 +25,9 @@ type Minio struct {
 }
 
 func (m *Minio) GetPresignedURL(path string) (string, error) {
+	if m.client == nil {
+		return "", fmt.Errorf("minio client is nil")
+	}
 	return m.client.GetPresignedURL(path)
 }
 

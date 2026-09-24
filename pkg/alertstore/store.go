@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sidchai/compkg/pkg/alert"
+	alert "github.com/sidchai/compkg/pkg/alert/metricrule"
 
 	"gorm.io/gorm"
 )

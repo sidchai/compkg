@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sidchai/compkg/pkg/alert"
+	"github.com/sidchai/compkg/pkg/alert/metricrule"
 )
 
 // KVReader 键值读取接口 — 零外部依赖
@@ -43,17 +43,17 @@ func WithCacheTTL(ttl time.Duration) KVOption {
 type KVConfigProvider struct {
 	reader   KVReader
 	key      string
-	cache    *alert.NotifierConfig
+	cache    *metricrule.NotifierConfig
 	cacheAt  time.Time
 	cacheTTL time.Duration
 	mu       sync.RWMutex
-	fallback *alert.NotifierConfig
+	fallback *metricrule.NotifierConfig
 }
 
 // NewKVProvider 创建 KV 配置提供者
 // reader: KV 读取器（调用方自行适配 Redis 客户端）
 // fallback: Redis 不可用时的降级配置
-func NewKVProvider(reader KVReader, fallback *alert.NotifierConfig, opts ...KVOption) *KVConfigProvider {
+func NewKVProvider(reader KVReader, fallback *metricrule.NotifierConfig, opts ...KVOption) *KVConfigProvider {
 	p := &KVConfigProvider{
 		reader:   reader,
 		key:      defaultRedisKey,
@@ -69,7 +69,7 @@ func NewKVProvider(reader KVReader, fallback *alert.NotifierConfig, opts ...KVOp
 // GetNotifierConfig 获取最新通知配置
 // 优先使用本地缓存，缓存过期后从 KV 存储读取
 // KV 不可用时使用降级配置
-func (p *KVConfigProvider) GetNotifierConfig() (*alert.NotifierConfig, error) {
+func (p *KVConfigProvider) GetNotifierConfig() (*metricrule.NotifierConfig, error) {
 	// 本地缓存未过期，直接返回
 	p.mu.RLock()
 	if p.cache != nil && time.Since(p.cacheAt) < p.cacheTTL {
@@ -89,7 +89,7 @@ func (p *KVConfigProvider) GetNotifierConfig() (*alert.NotifierConfig, error) {
 		return nil, err
 	}
 
-	cfg := &alert.NotifierConfig{}
+	cfg := &metricrule.NotifierConfig{}
 	if err := json.Unmarshal([]byte(val), cfg); err != nil {
 		// 解析失败，使用降级配置
 		if p.fallback != nil {
@@ -131,7 +131,7 @@ type RuleJSON struct {
 // GetRules 从 KV 存储读取动态规则列表
 // rulesKey: 规则列表的 Redis key（如 "alert:rules"）
 // 返回解析后的 Rule 切片；KV 不可用或 key 不存在时返回 nil, err
-func (p *KVConfigProvider) GetRules(rulesKey string) ([]alert.Rule, error) {
+func (p *KVConfigProvider) GetRules(rulesKey string) ([]metricrule.Rule, error) {
 	val, err := p.reader.Get(context.Background(), rulesKey)
 	if err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func (p *KVConfigProvider) GetRules(rulesKey string) ([]alert.Rule, error) {
 		return nil, fmt.Errorf("parse rules json: %w", err)
 	}
 
-	rules := make([]alert.Rule, 0, len(jsonRules))
+	rules := make([]metricrule.Rule, 0, len(jsonRules))
 	for _, jr := range jsonRules {
 		if jr.MetricName == "" {
 			continue
@@ -154,10 +154,10 @@ func (p *KVConfigProvider) GetRules(rulesKey string) ([]alert.Rule, error) {
 		if cooldown <= 0 {
 			cooldown = 5 * time.Minute // 默认5分钟
 		}
-		rules = append(rules, alert.Rule{
+		rules = append(rules, metricrule.Rule{
 			MetricName:     jr.MetricName,
-			RuleType:       alert.ParseRuleType(jr.RuleType),
-			Level:          alert.Level(jr.Level),
+			RuleType:       metricrule.ParseRuleType(jr.RuleType),
+			Level:          metricrule.Level(jr.Level),
 			Title:          jr.Title,
 			Threshold:      jr.Threshold,
 			ConsecutiveN:   jr.ConsecutiveN,

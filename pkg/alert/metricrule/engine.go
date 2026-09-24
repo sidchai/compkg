@@ -1,4 +1,4 @@
-package alert
+package metricrule
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"github.com/sidchai/compkg/pkg/metrics"
 )
 
-// Notifier 通知发送接口
+// Notifier 出口端口。实现只放 notifier（钉钉 / Webhook），本文件只评规则。
 type Notifier interface {
 	Send(event AlertEvent) error
 }
@@ -70,6 +70,21 @@ func (e *Engine) AddNotifier(n Notifier) {
 	e.mu.Lock()
 	e.notifiers = append(e.notifiers, n)
 	e.mu.Unlock()
+}
+
+// Close 释放带后台协程的 Notifier（Webhook 队列）。重复调用安全。
+func (e *Engine) Close() {
+	if e == nil {
+		return
+	}
+	e.mu.Lock()
+	ns := append([]Notifier(nil), e.notifiers...)
+	e.mu.Unlock()
+	for _, n := range ns {
+		if c, ok := n.(interface{ Close() }); ok {
+			c.Close()
+		}
+	}
 }
 
 // SetStore 设置告警持久化
