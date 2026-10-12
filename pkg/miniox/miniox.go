@@ -126,7 +126,13 @@ func (m *MinioX) Upload(objectName string, reader io.Reader, objectSize int64) (
 //	@param localFileName
 //	@return error
 func (m *MinioX) DownloadFile(fileUrl, localFileName string) error {
-	objectName := strings.ReplaceAll(fileUrl, fmt.Sprintf("%s://%s/%s/", m.client.EndpointURL().Scheme, m.client.EndpointURL().Host, m.BucketName), "")
+	if m.client == nil {
+		return errors.New("miniox client is nil")
+	}
+	objectName := m.objectNameFromURL(fileUrl)
+	if objectName == "" {
+		return errors.New("object key is empty")
+	}
 	logger.Info(objectName)
 	return m.client.FGetObject(m.ctx, m.BucketName, objectName, localFileName, minio.GetObjectOptions{})
 }
@@ -136,7 +142,14 @@ func (m *MinioX) DownloadFile(fileUrl, localFileName string) error {
 //	@Description: 获取目标文件信息
 //	@return error
 func (m *MinioX) GetObject(fileUrl string) *minio.Object {
-	objectName := strings.ReplaceAll(fileUrl, fmt.Sprintf("%s://%s", m.client.EndpointURL().Scheme, m.client.EndpointURL().Host), "")
+	if m.client == nil {
+		return nil
+	}
+	objectName := m.objectNameFromURL(fileUrl)
+	if objectName == "" {
+		logger.Errorf("miniox download err: object key is empty")
+		return nil
+	}
 	object, err := m.client.GetObject(m.ctx, m.BucketName, objectName, minio.GetObjectOptions{})
 	if err != nil {
 		logger.Errorf("miniox download err:%v", err)
@@ -168,7 +181,10 @@ func (m *MinioX) DeleteObject(fileUrl string) error {
 	if m.client == nil {
 		return errors.New("miniox client is nil")
 	}
-	objectName := strings.ReplaceAll(fileUrl, fmt.Sprintf("%s://%s/%s/", m.client.EndpointURL().Scheme, m.client.EndpointURL().Host, m.BucketName), "")
+	objectName := m.objectNameFromURL(fileUrl)
+	if objectName == "" {
+		return errors.New("object key is empty")
+	}
 	return m.client.RemoveObject(m.ctx, m.BucketName, objectName, minio.RemoveObjectOptions{})
 }
 
