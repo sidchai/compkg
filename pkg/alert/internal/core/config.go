@@ -39,6 +39,9 @@ type P0Thresholds struct {
 	ReconnectCount         int     `yaml:"reconnect_count" json:"reconnect_count"`                     // 窗内重连次数阈值
 	InstructionMinCount    int     `yaml:"instruction_min_count" json:"instruction_min_count"`         // 5 分钟内超时指令条数
 	InstructionMinOnline   int     `yaml:"instruction_min_online" json:"instruction_min_online"`       // 同时涉及的在线设备台数
+	// DeviceDailyFireLimit SD 不足、待上传积压各自的自然日触发上限。按设备号计，东八区切日。
+	// 不写或 ≤0 时默认 1。调大即放宽；持续异常不再按 10 分钟提醒重复消耗次数。
+	DeviceDailyFireLimit int `yaml:"device_daily_fire_limit" json:"device_daily_fire_limit"`
 }
 
 // ApplyDefaults 把未配置项补成当前代码默认，避免 yaml 漏字段把阈值变成 0。
@@ -47,7 +50,7 @@ func (p *P0Thresholds) ApplyDefaults() {
 		return
 	}
 	if p.WaitUploadGT <= 0 {
-		p.WaitUploadGT = 100
+		p.WaitUploadGT = 200
 	}
 	if p.TempGT <= 0 {
 		p.TempGT = 65
@@ -75,6 +78,9 @@ func (p *P0Thresholds) ApplyDefaults() {
 	}
 	if p.InstructionMinOnline <= 0 {
 		p.InstructionMinOnline = 3
+	}
+	if p.DeviceDailyFireLimit <= 0 {
+		p.DeviceDailyFireLimit = 1
 	}
 }
 

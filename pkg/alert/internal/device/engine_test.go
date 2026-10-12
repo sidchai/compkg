@@ -1,10 +1,12 @@
 package device
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/sidchai/compkg/pkg/alert/internal/core"
+	"github.com/sidchai/compkg/pkg/alert/internal/store"
 )
 
 func TestDeviceTempConsecutiveAndIsolate(t *testing.T) {
@@ -59,7 +61,7 @@ func TestDeviceConsecutiveNeed6Min(t *testing.T) {
 		t.Fatal("two low SD more than 6min apart must not fire")
 	}
 
-	wait := Sample{DeviceNo: "CONS0003XXXX", HasWait: true, WaitUpload: 120, At: now}
+	wait := Sample{DeviceNo: "CONS0003XXXX", HasWait: true, WaitUpload: 201, At: now}
 	e.Evaluate(wait)
 	wait.At = now.Add(7 * time.Minute)
 	if e.Evaluate(wait).Fire {
@@ -197,6 +199,167 @@ func TestDeviceWaitUploadOverride(t *testing.T) {
 	}
 	if r.FireText != "设备连续2次上报待上传录音超过50条，当前51条" {
 		t.Fatalf("phenomenon=%q", r.FireText)
+	}
+}
+
+func TestDeviceSDAndWaitOncePerNaturalDay(t *testing.T) {
+	e := New(10, nil)
+	loc := time.FixedZone("UTC+8", 8*3600)
+	now := time.Date(2026, 10, 12, 10, 0, 0, 0, loc)
+	sd := Sample{DeviceNo: "SDDAY0001XXXX", HasSD: true, SDRemainMB: 100, At: now}
+	if e.Evaluate(sd).Fire {
+		t.Fatal("first low sd must not fire")
+	}
+	sd.At = now.Add(time.Minute)
+	if !e.Evaluate(sd).Fire {
+		t.Fatal("second low sd should fire")
+	}
+	for i := 2; i <= 12; i++ {
+		sd.At = now.Add(time.Duration(i) * time.Minute)
+		r := e.Evaluate(sd)
+		if r.Fire || r.Remind {
+			t.Fatalf("same day sd must not fire again at +%dm", i)
+		}
+	}
+	sd.SDRemainMB = 500
+	sd.At = now.Add(13 * time.Minute)
+	e.Evaluate(sd)
+	sd.At = now.Add(14 * time.Minute)
+	if !e.Evaluate(sd).Resolve {
+		t.Fatal("two recovered sd samples should resolve")
+	}
+	sd.SDRemainMB = 100
+	sd.At = now.Add(15 * time.Minute)
+	e.Evaluate(sd)
+	sd.At = now.Add(16 * time.Minute)
+	if e.Evaluate(sd).Fire || e.Evaluate(sd).Remind {
+		t.Fatal("sd re-breach same natural day must not fire")
+	}
+
+	wait := Sample{DeviceNo: "SDDAY0001XXXX", HasWait: true, WaitUpload: 201, At: now.Add(17 * time.Minute)}
+	e.Evaluate(wait)
+	wait.At = now.Add(18 * time.Minute)
+	if !e.Evaluate(wait).Fire {
+		t.Fatal("wait backlog is a separate daily quota")
+	}
+	wait.At = now.Add(30 * time.Minute)
+	if e.Evaluate(wait).Fire || e.Evaluate(wait).Remind {
+		t.Fatal("wait backlog same day must not remind")
+	}
+
+	next := time.Date(2026, 10, 13, 0, 5, 0, 0, loc)
+	sd.SDRemainMB = 100
+	sd.At = next
+	e.Evaluate(sd)
+	sd.At = next.Add(time.Minute)
+	r := e.Evaluate(sd)
+	if !r.Fire && !r.Remind {
+		t.Fatal("next natural day should trigger again")
+	}
+	if r.FireText == "" || !strings.Contains(r.FireText, "SD卡剩余空间不足150MB") {
+		t.Fatalf("next day phenomenon=%q", r.FireText)
+	}
+}
+
+func TestDeviceDailyFireLimitTwo(t *testing.T) {
+	e := New(10, nil)
+	e.SetThresholds(core.P0Thresholds{DeviceDailyFireLimit: 2, SDRemainMBLT: 150})
+	now := time.Date(2026, 10, 12, 8, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
+	sd := Sample{DeviceNo: "SDDAY0002XXXX", HasSD: true, SDRemainMB: 10, At: now}
+	e.Evaluate(sd)
+	sd.At = now.Add(time.Minute)
+	if !e.Evaluate(sd).Fire {
+		t.Fatal("first incident should fire")
+	}
+	sd.SDRemainMB = 400
+	sd.At = now.Add(2 * time.Minute)
+	e.Evaluate(sd)
+	sd.At = now.Add(3 * time.Minute)
+	if !e.Evaluate(sd).Resolve {
+		t.Fatal("want resolve before second incident")
+	}
+	sd.SDRemainMB = 10
+	sd.At = now.Add(4 * time.Minute)
+	e.Evaluate(sd)
+	sd.At = now.Add(5 * time.Minute)
+	if !e.Evaluate(sd).Fire {
+		t.Fatal("limit 2 should allow the second incident")
+	}
+	sd.SDRemainMB = 400
+	sd.At = now.Add(6 * time.Minute)
+	e.Evaluate(sd)
+	sd.At = now.Add(7 * time.Minute)
+	e.Evaluate(sd)
+	sd.SDRemainMB = 10
+	sd.At = now.Add(8 * time.Minute)
+	e.Evaluate(sd)
+	sd.At = now.Add(9 * time.Minute)
+	if e.Evaluate(sd).Fire || e.Evaluate(sd).Remind {
+		t.Fatal("third incident same day must stay quiet")
+	}
+}
+
+func TestDeviceWaitUploadDefaultIs200(t *testing.T) {
+	e := New(10, nil)
+	now := time.Date(2026, 10, 12, 9, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
+	s := Sample{DeviceNo: "WAIT0200XXXX", HasWait: true, WaitUpload: 200, At: now}
+	e.Evaluate(s)
+	s.At = now.Add(time.Minute)
+	if e.Evaluate(s).Fire {
+		t.Fatal("200 is not greater than 200")
+	}
+	s.WaitUpload = 201
+	s.At = now.Add(2 * time.Minute)
+	e.Evaluate(s)
+	s.At = now.Add(3 * time.Minute)
+	r := e.Evaluate(s)
+	if !r.Fire {
+		t.Fatal("201 twice should fire at default 200")
+	}
+	if r.FireText != "设备连续2次上报待上传录音超过200条，当前201条" {
+		t.Fatalf("phenomenon=%q", r.FireText)
+	}
+}
+
+func TestDeviceTempRemindNotDailyLimited(t *testing.T) {
+	e := New(10, nil)
+	now := time.Date(2026, 10, 12, 11, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
+	s := Sample{DeviceNo: "TEMPREM0001XX", HasTemp: true, Temperature: 80, At: now}
+	e.Evaluate(s)
+	s.At = now.Add(time.Minute)
+	if !e.Evaluate(s).Fire {
+		t.Fatal("temp should fire")
+	}
+	reminded := false
+	for i := 2; i <= 12; i++ {
+		s.At = now.Add(time.Duration(i) * time.Minute)
+		if e.Evaluate(s).Remind {
+			reminded = true
+		}
+	}
+	if !reminded {
+		t.Fatal("temperature remind must stay on the 10 minute cadence")
+	}
+}
+
+func TestDeviceDailySharedStore(t *testing.T) {
+	st := store.NewMemoryStore(10)
+	a := New(10, nil)
+	b := New(10, nil)
+	a.SetStore(st)
+	b.SetStore(st)
+	now := time.Date(2026, 10, 12, 12, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
+	s := Sample{DeviceNo: "SDSHARE0001XX", HasSD: true, SDRemainMB: 10, At: now}
+	a.Evaluate(s)
+	s.At = now.Add(time.Minute)
+	if !a.Evaluate(s).Fire {
+		t.Fatal("first instance should fire")
+	}
+	other := Sample{DeviceNo: "SDSHARE0001XX", HasSD: true, SDRemainMB: 10, At: now.Add(2 * time.Minute)}
+	b.Evaluate(other)
+	other.At = now.Add(3 * time.Minute)
+	if r := b.Evaluate(other); r.Fire || r.Remind {
+		t.Fatal("second instance same device same day must not fire")
 	}
 }
 

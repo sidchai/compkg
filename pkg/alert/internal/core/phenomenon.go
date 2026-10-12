@@ -25,7 +25,7 @@ func formatSDResolve(mb float64) string {
 	return fmt.Sprintf("设备SD卡剩余空间已经恢复至%.0fMB", mb)
 }
 func formatWaitFire(n float64) string {
-	return fmt.Sprintf("设备连续2次上报待上传录音超过100条，当前%.0f条", n)
+	return fmt.Sprintf("设备连续2次上报待上传录音超过200条，当前%.0f条", n)
 }
 func formatWaitResolve(n float64) string {
 	return fmt.Sprintf("设备待上传录音已经降至%.0f条", n)

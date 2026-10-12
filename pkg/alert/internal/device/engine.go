@@ -67,6 +67,8 @@ type deviceState struct {
 	active        map[string]bool
 	everFired     bool
 	lastFireAt    time.Time
+	// daily 只限制 SD 不足和待上传积压。进程内先挡，避免每条心跳都打存储。
+	daily map[string]dayCount
 }
 
 // Engine 分片 + TTL + 容量上限。单设备一把锁。
@@ -76,6 +78,7 @@ type Engine struct {
 	capacity int
 	ttl      time.Duration
 	th       core.P0Thresholds
+	store    core.StateStore
 	total    atomic.Int64
 	evalN    atomic.Uint64
 }
@@ -117,6 +120,14 @@ func New(capacity int, exclude []string) *Engine {
 		e.shards[i] = &deviceShard{m: make(map[string]*deviceState)}
 	}
 	return e
+}
+
+// SetStore 注入多实例状态。nil 时只靠本进程计数，重启后同一自然日可能再告一次。
+func (e *Engine) SetStore(st core.StateStore) {
+	if e == nil {
+		return
+	}
+	e.store = st
 }
 
 // SetThresholds 用 YAML 覆盖数字阈值；≤0 的字段仍走默认。须在 Evaluate 前调用。
@@ -352,17 +363,24 @@ func (e *Engine) Evaluate(s Sample) Result {
 	for sub := range st.active {
 		res.Hits = append(res.Hits, sub)
 	}
-	if len(firingHits) > 0 && !st.everFired {
+	// 先判断这次会不会真正发出，再扣自然日名额。扣早了会把名额用掉但告警被 10 分钟提醒间隔吃掉。
+	outgoing := firingHits
+	willSend := len(firingHits) > 0 && (!st.everFired || s.At.Sub(st.lastFireAt) >= core.DefaultRemind)
+	if willSend {
+		outgoing = e.keepWithinDaily(st, s.DeviceNo, s.At, firingHits)
+		willSend = len(outgoing) > 0
+	}
+	if willSend && !st.everFired {
 		st.everFired = true
 		st.lastFireAt = s.At
 		res.Fire = true
-		res.FireText = joinHits(firingHits)
+		res.FireText = joinHits(outgoing)
 		return res
 	}
-	if len(firingHits) > 0 && st.everFired && s.At.Sub(st.lastFireAt) >= core.DefaultRemind {
+	if willSend && st.everFired {
 		st.lastFireAt = s.At
 		res.Remind = true
-		res.FireText = joinHits(firingHits)
+		res.FireText = joinHits(outgoing)
 		return res
 	}
 	if st.everFired && len(st.active) == 0 {

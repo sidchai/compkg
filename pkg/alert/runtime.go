@@ -45,6 +45,8 @@ func New(cfg Config, st StateStore, logger *slog.Logger) (*Runtime, error) {
 	cfg.P0.ApplyDefaults()
 	dev := device.New(0, nil)
 	dev.SetThresholds(cfg.P0)
+	// 自然日次数跨进程、跨重启仍要生效，必须走同一份 StateStore。
+	dev.SetStore(st)
 	rt := &Runtime{
 		Reporter:   reporter.New(cfg.Enabled, cfg.QueueCap(), snd, logger),
 		Evaluator:  engine.NewEvaluator(engine.RuleSpec{FireConsecutive: 1, RecoverConsecutive: 1}),
