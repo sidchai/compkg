@@ -13,6 +13,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/sidchai/compkg/pkg/logger"
 	"github.com/sidchai/compkg/pkg/upload"
+	"github.com/sidchai/compkg/pkg/util"
 	"github.com/volcengine/ve-tos-golang-sdk/v2/tos"
 )
 
@@ -139,7 +140,35 @@ func (v *VolcEngineTos) SetCustomStorage(isCustomStorage bool) {
 	v.IsCustomStorage = isCustomStorage
 }
 
+// Download 把对象下载到 dataFolder。
+// fileUrl 兼容上传返回的 https://{bucket}.{endpoint}/{key}，以及 Delete 使用的 voldtos://{bucket}/{key}。
 func (v *VolcEngineTos) Download(fileUrl, fileName, dataFolder string) error {
+	if v.tosClient == nil {
+		return errors.New("tosClient is nil")
+	}
+	key := strings.TrimPrefix(fileUrl, fmt.Sprintf("https://%s.%s/", v.bucketName, v.endpoint))
+	key = strings.TrimPrefix(key, fmt.Sprintf("voldtos://%s/", v.bucketName))
+	if key == "" {
+		return errors.New("object key is empty")
+	}
+	if !util.CheckFolder(dataFolder) {
+		if err := os.MkdirAll(dataFolder, os.ModePerm); err != nil {
+			logger.Infof("创建目录异常 -> %v", err)
+			return err
+		}
+		logger.Infof("创建成功!")
+	}
+	file := fmt.Sprintf("%s%s", dataFolder, fileName)
+	if _, err := v.tosClient.GetObjectToFile(context.Background(), &tos.GetObjectToFileInput{
+		GetObjectV2Input: tos.GetObjectV2Input{
+			Bucket: v.bucketName,
+			Key:    key,
+		},
+		FilePath: file,
+	}); err != nil {
+		logger.Errorf("VolcEngineTos Download GetObjectToFile err:%+v", err.Error())
+		return err
+	}
 	return nil
 }
 
