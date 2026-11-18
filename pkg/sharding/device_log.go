@@ -70,6 +70,11 @@ func DeviceLogWriteTable(accountID int64, deviceNo string) (string, error) {
 	return deviceLogCfg().writeTable(accountID, deviceNo, time.Now())
 }
 
+// DeviceLogWriteTableAt 按业务时间 at 相对 T_cut 选写入表（迁移保留 created_at 时用）。
+func DeviceLogWriteTableAt(accountID int64, deviceNo string, at time.Time) (string, error) {
+	return deviceLogCfg().writeTable(accountID, deviceNo, at)
+}
+
 func DeviceLogShardTable(accountID int64, deviceNo string) string {
 	return deviceLogCfg().shardPhysicalTable(accountID, deviceNo)
 }

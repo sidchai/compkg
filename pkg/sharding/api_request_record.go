@@ -76,7 +76,12 @@ func ApiRequestRecordLegacyTable() string {
 // ApiRequestRecordWriteTable 写入路由：未切流→旧单表；已切流→账户分片（account_id 必填）。
 func ApiRequestRecordWriteTable(accountID int64, deviceNo string) (string, error) {
 	return apiRequestRecordCfg().writeTable(accountID, deviceNo, time.Now())
-	}
+}
+
+// ApiRequestRecordWriteTableAt 按业务时间 at 相对 T_cut 选写入表（迁移保留 created_at 时用）。
+func ApiRequestRecordWriteTableAt(accountID int64, deviceNo string, at time.Time) (string, error) {
+	return apiRequestRecordCfg().writeTable(accountID, deviceNo, at)
+}
 
 // ApiRequestRecordShardTable 仅计算账户分片物理表（忽略 cutover，用于建表/对账）。
 func ApiRequestRecordShardTable(accountID int64, deviceNo string) string {
