@@ -58,7 +58,7 @@ func (a *AliyunOss) NewClient(ctx context.Context, opts ...upload.OssOption) {
 	a.expires = po.Expires
 }
 
-func (a *AliyunOss) UploadFileLocal(fileName, fileLocalPath string) (string, error) {
+func (a *AliyunOss) UploadFileLocal(fileName, fileLocalPath string, _ ...any) (string, error) {
 	if a.ossBucket == nil {
 		return "", errors.New("ossBucket is nil")
 	}

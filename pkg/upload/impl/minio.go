@@ -53,7 +53,7 @@ func (m *Minio) NewClient(ctx context.Context, opts ...upload.OssOption) {
 	m.client = minioX
 }
 
-func (m *Minio) UploadFileLocal(fileName, fileLocalPath string) (string, error) {
+func (m *Minio) UploadFileLocal(fileName, fileLocalPath string, _ ...any) (string, error) {
 	if m.client == nil {
 		return "", fmt.Errorf("minio client is nil")
 	}

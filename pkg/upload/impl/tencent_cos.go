@@ -55,7 +55,7 @@ func (t *TencentCos) NewClient(ctx context.Context, opts ...upload.OssOption) {
 	t.cosClient = NewClient(po.Endpoint, po.AccessKeyId, po.SecretAccessKey)
 }
 
-func (t *TencentCos) UploadFileLocal(fileName, fileLocalPath string) (string, error) {
+func (t *TencentCos) UploadFileLocal(fileName, fileLocalPath string, opts ...any) (string, error) {
 	if t.Catalogue == "" {
 		t.Catalogue = "audio"
 	}
@@ -72,11 +72,15 @@ func (t *TencentCos) UploadFileLocal(fileName, fileLocalPath string) (string, er
 	if strings.Contains(fileName, "TXT") || strings.Contains(fileName, "txt") {
 		headerOptions.ContentType = "text/plain; charset=utf-8"
 	}
+	var aclHeader *cos.ACLHeaderOptions
+	if len(opts) > 0 {
+		if v, ok := opts[0].(*cos.ACLHeaderOptions); ok && v != nil {
+			aclHeader = v
+		}
+	}
 	opt := &cos.ObjectPutOptions{
 		ObjectPutHeaderOptions: headerOptions,
-		ACLHeaderOptions: &cos.ACLHeaderOptions{
-			XCosACL: "public-read",
-		},
+		ACLHeaderOptions:       aclHeader, // 不传则继承桶 ACL
 	}
 	rsp, err := t.cosClient.Object.PutFromFile(context.Background(), cosPath, fileLocalPath, opt)
 	if err != nil {

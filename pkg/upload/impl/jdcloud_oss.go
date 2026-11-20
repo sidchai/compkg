@@ -87,7 +87,7 @@ func parseRegionFromEndpoint(endpoint string) string {
 }
 
 // UploadFileLocal 上传本地文件到京东云 OSS
-func (j *JDCloudOss) UploadFileLocal(fileName, fileLocalPath string) (string, error) {
+func (j *JDCloudOss) UploadFileLocal(fileName, fileLocalPath string, _ ...any) (string, error) {
 	if j.s3Client == nil {
 		return "", errors.New("s3Client is nil")
 	}

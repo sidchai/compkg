@@ -17,7 +17,7 @@ var (
 //	@Description: 对象存储接口
 type Oss interface {
 	NewClient(ctx context.Context, opts ...OssOption)                // 实例化
-	UploadFileLocal(fileName, fileLocalPath string) (string, error)  // 上传本地文件
+	UploadFileLocal(fileName, fileLocalPath string, opts ...any) (string, error) // 上传本地文件；opts 可选（如腾讯云 ACLHeaderOptions）
 	UploadFileIo(fileName string, content io.Reader) (string, error) // 上传文件流数据
 	GetETag() string                                                 // 获取文件md5校验值
 	GetFileSize() int64                                              // 获取文件大小

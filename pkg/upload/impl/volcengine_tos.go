@@ -57,7 +57,7 @@ func (v *VolcEngineTos) NewClient(ctx context.Context, opts ...upload.OssOption)
 	v.endpoint = po.Endpoint
 }
 
-func (v *VolcEngineTos) UploadFileLocal(fileName, fileLocalPath string) (string, error) {
+func (v *VolcEngineTos) UploadFileLocal(fileName, fileLocalPath string, _ ...any) (string, error) {
 	tosPath := fmt.Sprintf("%s/%s", v.Catalogue, fileName)
 	var isObject bool
 	if v.objectKey != "" {

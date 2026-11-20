@@ -56,7 +56,7 @@ func (h *HuaweiObs) NewClient(ctx context.Context, opts ...upload.OssOption) {
 }
 
 // UploadFileLocal 上传本地文件到 OBS
-func (h *HuaweiObs) UploadFileLocal(fileName, fileLocalPath string) (string, error) {
+func (h *HuaweiObs) UploadFileLocal(fileName, fileLocalPath string, _ ...any) (string, error) {
 	if h.obsClient == nil {
 		return "", errors.New("obsClient is nil")
 	}
