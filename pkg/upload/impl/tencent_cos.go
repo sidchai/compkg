@@ -27,17 +27,68 @@ type TencentCos struct {
 	IsTime          bool
 	cosClient       *cos.Client
 	cosUrl          string
+	secretId        string
+	secretKey       string
 	IsCustomStorage bool
 	expires         int64
 }
 
+// GetPresignedURL 生成预签名下载链接。
+// path 可为完整 COS URL 或裸 object key；若 URL 指向其它桶，会用同账号凭证切换到该桶客户端再签名。
 func (t *TencentCos) GetPresignedURL(path string) (string, error) {
-	key := strings.ReplaceAll(path, t.cosUrl+"/", "")
-	presignedURL, err := t.cosClient.Object.GetPresignedURL3(context.Background(), http.MethodGet, key, time.Duration(t.expires)*time.Second, nil, false)
+	if t.cosClient == nil {
+		return "", fmt.Errorf("cosClient is nil")
+	}
+	bucketURL, key := cosBucketAndKey(path, t.cosUrl)
+	if key == "" {
+		return "", fmt.Errorf("object key is empty")
+	}
+	client := t.cosClient
+	if !sameCosBucket(bucketURL, t.cosUrl) {
+		if t.secretId == "" || t.secretKey == "" {
+			return "", fmt.Errorf("credentials missing for cross-bucket presign")
+		}
+		client = NewClient(bucketURL, t.secretId, t.secretKey)
+	}
+	expires := t.expires
+	if expires <= 0 {
+		expires = 3600
+	}
+	presignedURL, err := client.Object.GetPresignedURL3(context.Background(), http.MethodGet, key, time.Duration(expires)*time.Second, nil, false)
 	if err != nil {
 		return "", err
 	}
 	return presignedURL.String(), nil
+}
+
+// cosBucketAndKey 从完整 URL 或裸 key 解析桶基址与 object key；去掉已有 query。
+func cosBucketAndKey(path, defaultCosURL string) (bucketURL, key string) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return defaultCosURL, ""
+	}
+	if q := strings.Index(path, "?"); q >= 0 {
+		path = path[:q]
+	}
+	if !strings.Contains(path, "://") {
+		return defaultCosURL, strings.TrimPrefix(path, "/")
+	}
+	u, err := url.Parse(path)
+	if err != nil || u.Host == "" {
+		return defaultCosURL, strings.TrimPrefix(path, "/")
+	}
+	bucketURL = u.Scheme + "://" + u.Host
+	key = strings.TrimPrefix(u.Path, "/")
+	return bucketURL, key
+}
+
+func sameCosBucket(a, b string) bool {
+	ua, err1 := url.Parse(strings.TrimRight(a, "/"))
+	ub, err2 := url.Parse(strings.TrimRight(b, "/"))
+	if err1 != nil || err2 != nil || ua.Host == "" || ub.Host == "" {
+		return strings.TrimRight(a, "/") == strings.TrimRight(b, "/")
+	}
+	return strings.EqualFold(ua.Host, ub.Host)
 }
 
 func init() {
@@ -52,6 +103,8 @@ func (t *TencentCos) NewClient(ctx context.Context, opts ...upload.OssOption) {
 	}
 	t.cosUrl = po.Endpoint
 	t.expires = po.Expires
+	t.secretId = po.AccessKeyId
+	t.secretKey = po.SecretAccessKey
 	t.cosClient = NewClient(po.Endpoint, po.AccessKeyId, po.SecretAccessKey)
 }
 
