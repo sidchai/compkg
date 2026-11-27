@@ -187,8 +187,22 @@ func (t *TencentCos) SetCustomStorage(isCustomStorage bool) {
 	t.IsCustomStorage = isCustomStorage
 }
 
+// Download 下载对象到本地。fileUrl 可为完整 COS URL 或裸 key；跨桶时切换到目标桶客户端再下载。
 func (t *TencentCos) Download(fileUrl, fileName, dataFolder string) error {
-	key := strings.ReplaceAll(fileUrl, t.cosUrl+"/", "")
+	if t.cosClient == nil {
+		return fmt.Errorf("cosClient is nil")
+	}
+	bucketURL, key := cosBucketAndKey(fileUrl, t.cosUrl)
+	if key == "" {
+		return fmt.Errorf("object key is empty")
+	}
+	client := t.cosClient
+	if !sameCosBucket(bucketURL, t.cosUrl) {
+		if t.secretId == "" || t.secretKey == "" {
+			return fmt.Errorf("credentials missing for cross-bucket download")
+		}
+		client = NewClient(bucketURL, t.secretId, t.secretKey)
+	}
 	if !util.CheckFolder(dataFolder) {
 		err := os.MkdirAll(dataFolder, os.ModePerm)
 		if err != nil {
@@ -201,7 +215,7 @@ func (t *TencentCos) Download(fileUrl, fileName, dataFolder string) error {
 	opt := &cos.MultiDownloadOptions{
 		ThreadPoolSize: 5, // 线程池大小
 	}
-	_, err := t.cosClient.Object.Download(context.Background(), key, file, opt)
+	_, err := client.Object.Download(context.Background(), key, file, opt)
 	if err != nil {
 		logger.Error("TencentCos Download Download err:%v", err.Error())
 		return err
